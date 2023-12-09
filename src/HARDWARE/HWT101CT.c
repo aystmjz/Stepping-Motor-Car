@@ -24,17 +24,13 @@ float HWT_getAngleSpeed()
 float HWT_getAngle()
 {
     float Angle;
-    Angle=(float)((short)(((short)angle_buf[5] << 8) | angle_buf[4])) * 180 / 32768;
-    if(Angle>-180&&Angle<0)
-    {
-        Angle=-Angle;
-    }
-    else if(Angle>0&&Angle<180)
-    {
-        Angle=360.0-Angle;
-    }
-    else if(Angle==180||Angle==-180){
-        Angle=180.0;
+    Angle = (float)((short)(((short)angle_buf[5] << 8) | angle_buf[4])) * 180 / 32768;
+    if (Angle > -180 && Angle < 0) {
+        Angle = -Angle;
+    } else if (Angle > 0 && Angle < 180) {
+        Angle = 360.0 - Angle;
+    } else if (Angle == 180 || Angle == -180) {
+        Angle = 180.0;
     }
     return Angle;
 }
@@ -154,7 +150,7 @@ void HWT_Serial_Init()
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
 
-     GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitTypeDef GPIO_InitStructure;
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF_PP;
     GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_10; // TX
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
@@ -184,7 +180,6 @@ void HWT_Serial_Init()
     NVIC_InitStructure.NVIC_IRQChannelSubPriority        = 1;
     NVIC_Init(&NVIC_InitStructure);
 
-
     USART_Cmd(UART4, ENABLE);
 }
 
@@ -196,8 +191,12 @@ void HWT101CT_Init(void)
 {
     HWT_Serial_Init();
     Delay_ms(100);
-    //HWT_setBaud(HWT_BIRATE_9600);
-    HWT_setZero();
+    angle_buf[5]=0xff;
+    while (HWT_getAngle()) {
+        HWT_setZero();
+        Delay_ms(100);
+        Buzzer_Tow(100);
+    }
 }
 
 void HWT_Serial_SendByte(uint8_t Byte)

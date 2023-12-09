@@ -20,6 +20,7 @@ extern float Angle_SET;
 
 uint8_t Buzzer_Flag      = 0;
 uint8_t Buzzer_Debug     = 0;
+uint8_t Camera_Flag      = 0;
 uint8_t Sensor_Spin_Flag = 0;
 uint8_t Sensor_Lift_Flag = 0;
 #define Buzzer_Delay  50
@@ -35,7 +36,7 @@ uint8_t Sensor_Lift_Flag = 0;
 
 #define _Distance     7000
 
-#define Spin_Distance 1000
+#define Spin_Distance 500
 
 #define Spead         85
 #define Distance_     3000
@@ -45,10 +46,7 @@ uint8_t Sensor_Lift_Flag = 0;
 
 #define MOTOR_X(x)    MOTOR_X_(x)
 
-void Buzzer_One()
-{
-    Buzzer_Flag = 1;
-}
+
 
 void Display__()
 {
@@ -68,7 +66,8 @@ void Display__()
 }
 void Display()
 {
-    OLED_ShowSignedNum(2, 1, PID_L.e_l, 5);
+    OLED_ShowSignedNum(2, 1, Angle_SET, 3);
+    //OLED_ShowSignedNum(2, 1, PID_L.e_l, 5);
     OLED_ShowSignedNum(2, 9, PID_R.e_l, 5);
     OLED_ShowSignedNum(3, 1, PID_L.TOTAL_OUT, 5);
     OLED_ShowSignedNum(3, 9, PID_R.TOTAL_OUT, 5);
@@ -144,17 +143,7 @@ void MOTOR_X_(int x)
 
 extern double SMOTOR_SPEED;
 
-void Buzzer_Tow(uint16_t Time)
-{
-    Buzzer_Debug = 1;
-    Buzzer_ON();
-    Delay_ms(Time);
-    Buzzer_OFF();
-    Buzzer_ON();
-    Delay_ms(Time);
-    Buzzer_OFF();
-    Buzzer_Debug = 0;
-}
+
 
 #define Suspend_Long         200
 #define Suspend_Height       90
@@ -478,6 +467,7 @@ int main(void)
     Init_Status();
     Send_CMD(MAIN_MODE, NOCOLOR);
     Display();
+    Angle_SET=0;
     Delay_ms(3000);
 
     // Send_CMD(CIRCLE_MODE, First_Two);
@@ -492,13 +482,20 @@ int main(void)
     Block_Data[7] = 1;
     Nixie_Show();
     Display_();
-    switch (-5) {
+    switch (3) {
 
         case -5:
-
+            MOTOR_F(-1000);
+            MOTOR_Spin(Left, -10, Spead);
+            Angle_SET=-10;
+            MOTOR_X(-10000);
+            MOTOR_Spin(Left, 10, Spead);
+            Angle_SET=0;
+            MOTOR_X(4200); // 4500
+            MOTOR_Spin(Left, 90, Spead);
             while (1) {
-                Delay_ms(1000);
-                MOTOR_X(10000);
+                //Delay_ms(1000);
+                MOTOR_X(5000);//18400
                 MOTOR_Spin(Left, 90, Spead);
             }
             break;
@@ -572,7 +569,7 @@ int main(void)
                 // Send_CMD(CIRCLE_MODE, NOCOLOR);
                 // SMOTOR_Angle_Adjust(0, SPEED_B);
 
-                // Grab_Block(Camera_First_One, Lift_L);
+                // Grab_Block(Camera_First_One, Lift_L);tr
                 // Install_Block(Location_R, Lift_L);
 
                 // Grab_Block(Camera_First_Two, Lift_L);
@@ -692,109 +689,119 @@ int main(void)
             Display();
             // break;7
             // case 4:
-            SMOTOR_MOVE_Suspend(0, Lift_L);
+            // SMOTOR_MOVE_Suspend(0, Lift_L);
+            // MOTOR_F(-1000);
+            // MOTOR_Spin(Left, -16, Spead);
+            // MOTOR_F(-6000);
+            // MOTOR_Spin(Left, 16, Spead);
+            // MOTOR_F(500); // 500
+            // MOTOR_Spin(Left, 90, Spead);
+
             MOTOR_F(-1000);
-            MOTOR_Spin(Left, -16, Spead);
-            MOTOR_F(-6000);
-            MOTOR_Spin(Left, 16, Spead);
-            MOTOR_F(500); // 500
+            MOTOR_Spin(Left, -10, Spead);
+            Angle_SET=-10;
+            MOTOR_X(-10000);
+            MOTOR_Spin(Left, 10, Spead);
+            Angle_SET=0;
+            MOTOR_X(4200); // 4500
             MOTOR_Spin(Left, 90, Spead);
 
             MOTOR_F(1200);
             MOTOR_X(6200);
             Delay_ms(200); // 二维码
-            start_scan_QRCode(5000);
+            //start_scan_QRCode(5000);
             MOTOR_X(8500); // 12000
             Delay_ms(500); // 圆盘
 
-            Take_Block(First_One, Lift_L);
-            Install_Block(Location_L, Lift_L);
-            Take_Block(First_Two, Lift_L);
-            Install_Block(Location_M, Lift_L);
-            Take_Block(First_Three, Lift_L);
-            Send_CMD(MAIN_MODE, NOCOLOR);
-            Install_Block(Location_R, Lift_L);
-            SMOTOR_Angle_Adjust(20, SPEED_B);
+            // Take_Block(First_One, Lift_L);
+            // Install_Block(Location_L, Lift_L);
+            // Take_Block(First_Two, Lift_L);
+            // Install_Block(Location_M, Lift_L);
+            // Take_Block(First_Three, Lift_L);
+            // Send_CMD(MAIN_MODE, NOCOLOR);
+            // Install_Block(Location_R, Lift_L);
+            // SMOTOR_Angle_Adjust(20, SPEED_B);
 
-            MOTOR_X(4900); // 5300
+            MOTOR_X(4850); // 5300
 
+Delay_ms(1000);
             MOTOR_F(Spin_Distance);
             MOTOR_Spin(Left, 90, Spead);
             MOTOR_F(Spin_Distance);
-
+Delay_ms(1000);
             MOTOR_X(9200);
 
             Delay_ms(300); // 放物料1
-            Get_Block(Location_L, Lift_L);
-            SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_One);
-            Camera_First_One = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
-            Place_Block(Lift_L - 10);
+            // Get_Block(Location_L, Lift_L);
+            // SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_One);
+            // Camera_First_One = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
+            // Place_Block(Lift_L - 10);
 
-            SMOTOR_Angle_Adjust(0, SPEED_B);
-            Get_Block(Location_M, Lift_L);
-            SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Two);
-            Camera_First_Two = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
-            Place_Block(Lift_L - 10);
+            // SMOTOR_Angle_Adjust(0, SPEED_B);
+            // Get_Block(Location_M, Lift_L);
+            // SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Two);
+            // Camera_First_Two = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
+            // Place_Block(Lift_L - 10);
 
-            SMOTOR_Angle_Adjust(0, SPEED_B);
-            Get_Block(Location_R, Lift_L);
-            SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Three);
-            Camera_First_Three = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
-            Place_Block(Lift_L - 10);
+            // SMOTOR_Angle_Adjust(0, SPEED_B);
+            // Get_Block(Location_R, Lift_L);
+            // SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Three);
+            // Camera_First_Three = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
+            // Place_Block(Lift_L - 10);
 
-            Send_CMD(CIRCLE_MODE, NOCOLOR);
-            SMOTOR_Angle_Adjust(0, SPEED_B); // 取物料
+            // Send_CMD(CIRCLE_MODE, NOCOLOR);
+            // SMOTOR_Angle_Adjust(0, SPEED_B); // 取物料
 
-            Grab_Block(Camera_First_One, Lift_L);
-            Install_Block(Location_L, Lift_L);
+            // Grab_Block(Camera_First_One, Lift_L);
+            // Install_Block(Location_L, Lift_L);
 
-            Grab_Block(Camera_First_Two, Lift_L);
-            Install_Block(Location_M, Lift_L);
+            // Grab_Block(Camera_First_Two, Lift_L);
+            // Install_Block(Location_M, Lift_L);
 
-            Grab_Block(Camera_First_Three, Lift_L);
-            Install_Block(Location_R, Lift_L);
+            // Grab_Block(Camera_First_Three, Lift_L);
+            // Install_Block(Location_R, Lift_L);
 
-            Send_CMD(MAIN_MODE, NOCOLOR);
+            // Send_CMD(MAIN_MODE, NOCOLOR);
 
             MOTOR_X(7500);
-
+Delay_ms(1000);
             MOTOR_F(Spin_Distance);
             MOTOR_Spin(Left, 90, Spead);
             MOTOR_F(Spin_Distance);
-
+Delay_ms(1000);
             MOTOR_X(8000);
             Delay_ms(500); // 放物料2
-            Get_Block(Location_L, Lift_L);
-            SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_One);
-            SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
-            Place_Block(Lift_L - 10);
+            // Get_Block(Location_L, Lift_L);
+            // SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_One);
+            // SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
+            // Place_Block(Lift_L - 10);
 
-            SMOTOR_Angle_Adjust(0, SPEED_B);
-            Get_Block(Location_M, Lift_L);
-            SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Two);
-            SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
-            Place_Block(Lift_L - 10);
+            // SMOTOR_Angle_Adjust(0, SPEED_B);
+            // Get_Block(Location_M, Lift_L);
+            // SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Two);
+            // SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
+            // Place_Block(Lift_L - 10);
 
-            SMOTOR_Angle_Adjust(0, SPEED_B);
-            Get_Block(Location_R, Lift_L);
-            SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Three);
-            SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
-            Send_CMD(MAIN_MODE, NOCOLOR);
-            Place_Block(Lift_L - 10);
-            SMOTOR_Angle_Adjust(0, SPEED_B);
-
+            // SMOTOR_Angle_Adjust(0, SPEED_B);
+            // Get_Block(Location_R, Lift_L);
+            // SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Three);
+            // SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
+            // Send_CMD(MAIN_MODE, NOCOLOR);
+            // Place_Block(Lift_L - 10);
+            // SMOTOR_Angle_Adjust(0, SPEED_B);
+ 
             MOTOR_X(11500);
-
+Delay_ms(1000);
             MOTOR_F(Spin_Distance);
             MOTOR_Spin(Left, 90, Spead);
             MOTOR_F(Spin_Distance);
-
+Delay_ms(1000);
             MOTOR_X(16400);
-
+Delay_ms(1000);
             MOTOR_F(Spin_Distance);
             MOTOR_Spin(Left, 90, Spead);
             MOTOR_F(Spin_Distance);
-
+Delay_ms(1000);
             Delay_ms(1500); // 第二轮
 
             MOTOR_X(16200); // 取物料

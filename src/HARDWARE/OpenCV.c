@@ -199,6 +199,7 @@ void Send_CMD(uint8_t main_mode, uint8_t color)
 
 #ifdef WSDC2412D
 float Angle_SET = 0;
+extern uint8_t Camera_Flag;
 #define target      100
 #define HWT_Angle   (HWT_getAngle())
 #define HWT_Angle_K 4
@@ -211,11 +212,15 @@ int32_t Get_Excursion()
     //     return 0;
     // }
     Excursion1 = (getUsartBuf(2) - getUsartBuf(1)) * 4;
-    //Excursion2 = (getUsartBuf(2) + getUsartBuf(1)) / 2 - target;
-    if (!Angle_SET && HWT_Angle > 270 && HWT_Angle < 360) {
-        Excursion += (Excursion1 + Excursion2) / 9 -(HWT_Angle-360.0-Angle_SET) * HWT_Angle_K;
+    // Excursion2 = (getUsartBuf(2) + getUsartBuf(1)) / 2 - target;
+
+    if (Camera_Flag) {
+        Excursion += (Excursion1 + Excursion2) / 9;
+    }
+    if ((Angle_SET > -45 && Angle_SET < 45) && HWT_Angle > 270 && HWT_Angle < 360) {
+        Excursion -= (HWT_Angle - 360.0 - Angle_SET) * HWT_Angle_K;
     } else {
-        Excursion += (Excursion1 + Excursion2) / 9 -(HWT_Angle-Angle_SET) * HWT_Angle_K;
+        Excursion -= (HWT_Angle - Angle_SET) * HWT_Angle_K;
     }
 
 #if 0

@@ -1,5 +1,8 @@
 #include "Buzzer.h"
 
+extern uint8_t Buzzer_Debug;
+extern uint8_t Buzzer_Flag;
+
 void Buzzer_Init(void)
 {
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB,ENABLE);
@@ -30,4 +33,21 @@ void Buzzer_Turn(void)
 	GPIO_SetBits(GPIOB,GPIO_Pin_14);
 	else
 	GPIO_ResetBits(GPIOB,GPIO_Pin_14);
+}
+
+void Buzzer_Tow(uint16_t Time)
+{
+    Buzzer_Debug = 1;
+    Buzzer_ON();
+    Delay_ms(Time);
+    Buzzer_OFF();
+    Buzzer_ON();
+    Delay_ms(Time);
+    Buzzer_OFF();
+    Buzzer_Debug = 0;
+}
+
+void Buzzer_One(void)
+{
+    Buzzer_Flag = 1;
 }

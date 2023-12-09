@@ -308,22 +308,22 @@ void MOTOR_Stop(uint16_t MOTOR, int32_t Spead, int32_t Distance)
         case 0x01:
             MOTOR_Clear(MOTOR);
             while (MOTOR_CONTROL(Spead, Distance, MOTOR_Left)) {}
-            MOTOR_CONTROL(40, 0, MOTOR_Left);
+            MOTOR_CONTROL(Spead, 0, MOTOR_Left);
             MOTOR_Clear(MOTOR);
             break;
 
         case 0x02:
             MOTOR_Clear(MOTOR);
             while (MOTOR_CONTROL(Spead, Distance, MOTOR_Right)) {}
-            MOTOR_CONTROL(40, 0, MOTOR_Right);
+            MOTOR_CONTROL(Spead, 0, MOTOR_Right);
             MOTOR_Clear(MOTOR);
             break;
 
         case 0x03:
             MOTOR_Clear(MOTOR);
             while (MOTOR_CONTROL(Spead, Distance, MOTOR_Left) & MOTOR_CONTROL(Spead, Distance, MOTOR_Right)) {}
-            MOTOR_CONTROL(40, 0, MOTOR_Left);
-            MOTOR_CONTROL(40, 0, MOTOR_Right);
+            MOTOR_CONTROL(Spead, 0, MOTOR_Left);
+            MOTOR_CONTROL(Spead, 0, MOTOR_Right);
             MOTOR_Clear(MOTOR);
             break;
     }
@@ -375,40 +375,86 @@ void MOTOR_Run_all()
     MOTOR_Run(&PID_R, MOTOR_Right);
 }
 
-#define Spin_EX 10
-#define HWT_Angle   (HWT_getAngle())
+#define Angle_EX      5
+#define HWT_Angle     (HWT_getAngle())
+#define Stop_Distance 350
+#define EX_Distance   1000
 void MOTOR_Spin(Direction Vale, int32_t Angle, int32_t Spead)
 {
 
 #ifdef S_Spin
     if (Vale == Left) {
-        if (Angle_SET + Angle >= 360.0) Angle_SET -= 360.0;
+        if (Angle_SET + Angle > 360.0) Angle_SET -= 360.0;
         Angle_SET += Angle;
     } else {
         if (Angle_SET - Angle < 0) Angle_SET += 360.0;
         Angle_SET -= Angle;
     }
-    Delay_ms(200);
-    Angle = (int32_t)((float)Angle * 81.5); // 26.8//74.8//79
-    // Spead+=10;
-    switch (Vale) {
-        case 0x01:
-            MOTOR_Clear(MOTOR_Left | MOTOR_Right);
-            while (MOTOR_CONTROL(Spead, Angle, MOTOR_Right) | MOTOR_CONTROL(Spead, 0, MOTOR_Left)) {}
-            MOTOR_CONTROL(Spead, 0, MOTOR_Right);
-            MOTOR_CONTROL(Spead, 0, MOTOR_Left);
-            MOTOR_Clear(MOTOR_Left | MOTOR_Right);
-            break;
+    Delay_ms(100);
+    // if ((Angle_SET>-45&&Angle_SET<45) && HWT_Angle > 270 && HWT_Angle < 360) {
+    //     Excursion += (Excursion1 + Excursion2) / 9 -(HWT_Angle-360.0-Angle_SET) * HWT_Angle_K;
+    // } else {
+    if (Angle > -30 && Angle < 30) {
+        Angle = (int32_t)((float)Angle * 81.5); // 26.8//74.8//79
+        switch (Vale) {
+            case Left:
+                MOTOR_Clear(MOTOR_Left | MOTOR_Right);
+                while (MOTOR_CONTROL(Spead, Angle, MOTOR_Right) | MOTOR_CONTROL(Spead, 0, MOTOR_Left)) {}
+                Buzzer_One();
+                MOTOR_CONTROL(Spead, 0, MOTOR_Right);
+                MOTOR_CONTROL(Spead, 0, MOTOR_Left);
+                MOTOR_Clear(MOTOR_Left | MOTOR_Right);
+                break;
 
-        case 0x00:
-            MOTOR_Clear(MOTOR_Left | MOTOR_Right);
-            while (MOTOR_CONTROL(Spead, Angle, MOTOR_Left) | MOTOR_CONTROL(Spead, 0, MOTOR_Right)) {}
-            MOTOR_CONTROL(Spead, 0, MOTOR_Left);
-            MOTOR_CONTROL(Spead, 0, MOTOR_Right);
-            MOTOR_Clear(MOTOR_Left | MOTOR_Right);
-            break;
+            case Right:
+                MOTOR_Clear(MOTOR_Left | MOTOR_Right);
+                while (MOTOR_CONTROL(Spead, Angle, MOTOR_Left) | MOTOR_CONTROL(Spead, 0, MOTOR_Right)) {}
+                Buzzer_One();
+                MOTOR_CONTROL(Spead, 0, MOTOR_Left);
+                MOTOR_CONTROL(Spead, 0, MOTOR_Right);
+                MOTOR_Clear(MOTOR_Left | MOTOR_Right);
+                break;
+        }
+    } else {
+        Angle = (int32_t)((float)Angle * 81.5 + EX_Distance);
+        switch (Vale) {
+            case Left:
+                MOTOR_Clear(MOTOR_Left | MOTOR_Right);
+                while ((Angle_SET - HWT_Angle) > Angle_EX || (Angle_SET - HWT_Angle) < -Angle_EX) {
+                    if (!(MOTOR_CONTROL(Spead, Angle, MOTOR_Right) | MOTOR_CONTROL(Spead, 0, MOTOR_Left))) {
+                        MOTOR_Clear(MOTOR_Left | MOTOR_Right);
+                        MOTOR_CONTROL(Spead, 0, MOTOR_Left | MOTOR_Right);
+                        if (Angle_SET == 360) Angle_SET = 0;
+                        Buzzer_Tow(200);
+                        return;
+                    }
+                }
+                Buzzer_One();
+                MOTOR_Stop(MOTOR_Right, Spead, Stop_Distance);
+                MOTOR_CONTROL(Spead, 0, MOTOR_Left);
+                MOTOR_Clear(MOTOR_Left);
+                break;
+
+            case Right:
+                MOTOR_Clear(MOTOR_Left | MOTOR_Right);
+                while ((Angle_SET - HWT_Angle) > Angle_EX || (Angle_SET - HWT_Angle) < -Angle_EX) {
+                    if (!(MOTOR_CONTROL(Spead, Angle, MOTOR_Left) | MOTOR_CONTROL(Spead, 0, MOTOR_Right))) {
+                        MOTOR_Clear(MOTOR_Left | MOTOR_Right);
+                        MOTOR_CONTROL(Spead, 0, MOTOR_Left | MOTOR_Right);
+                        if (Angle_SET == 360) Angle_SET = 0;
+                        Buzzer_Tow(200);
+                        return;
+                    }
+                }
+                Buzzer_One();
+                MOTOR_Stop(MOTOR_Left, Spead, Stop_Distance);
+                MOTOR_CONTROL(Spead, 0, MOTOR_Right);
+                MOTOR_Clear(MOTOR_Right);
+                break;
+        }
     }
-    Delay_ms(200);
+    if (Angle_SET == 360) Angle_SET = 0;
+    Delay_ms(1000);
 
 #else
     Delay_ms(200);
