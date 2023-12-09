@@ -5,15 +5,18 @@
 #include "Delay.h"
 #include "Usart.h"
 
-
 #define SERVO_Stretch 0
 #define SERVO_Swing   1
 #define Time_ms       100
-#define Stretch_MIN   1200
-#define Stretch_MAX   2100
-#define Swing_L       2070
-#define Swing_R       730
-#define SHRINK        moveServo(SERVO_Stretch, Stretch_MIN, Time_ms)    //机械爪收缩
+#define Stretch_MIN   950
+#define Stretch_MAX   1900
+#define Swing_F       2210
+#define Swing_L       1570
+#define Swing_B       930
+#define Front         90
+#define Behind        -90
+
+#define SHRINK        moveServo(SERVO_Stretch, Stretch_MIN, Time_ms) // 机械爪收缩
 
 void Servo_Init(void);
 void Init_Status(void);

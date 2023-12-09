@@ -271,9 +271,9 @@ void SMOTOR_CONTROL(uint32_t Spead, int32_t Location, uint8_t SMOTOR)
                 SMOTOR_L_Location = Location;
                 if (Error < 0) {
                     Error = -Error;
-                    SET_Rotation(SMOTOR, Backward);
-                } else
                     SET_Rotation(SMOTOR, Forward);
+                } else
+                    SET_Rotation(SMOTOR, Backward);
                 SMOTOR_L_target = Error;
                 SET_TIM(Tim2, Spead - 1, Spead / 2 - 1);
                 SMOTOR_START(SMOTOR_L);
@@ -287,9 +287,9 @@ void SMOTOR_CONTROL(uint32_t Spead, int32_t Location, uint8_t SMOTOR)
                 SMOTOR_R_Location = Location;
                 if (Error < 0) {
                     Error = -Error;
-                    SET_Rotation(SMOTOR, Backward);
-                } else
                     SET_Rotation(SMOTOR, Forward);
+                } else
+                    SET_Rotation(SMOTOR, Backward);
                 SMOTOR_R_target = Error;
                 SET_TIM(Tim3, Spead - 1, Spead / 2 - 1);
                 SMOTOR_START(SMOTOR_R);
@@ -435,9 +435,12 @@ angleTypeDef SMOTOR_ANGLE(double Long, double Height, double Angle, double Speed
         Angle_R = Clculate_Angle_R_N(Long, -Height);
     }
 
-    angle.angle_L = Modify(Angle_L, Angle_R) - Modify(SMOTOR_L_Init, SMOTOR_R_Init);
+    angle.angle_L = Angle_L-SMOTOR_L_Init;
     angle.angle_R = Angle_R - SMOTOR_R_Init;
-    // if(angle.angle_R<0)angle.angle_R=0;
+
+    //angle.angle_L = Modify(Angle_L, Angle_R) - Modify(SMOTOR_L_Init, SMOTOR_R_Init);
+    //angle.angle_R = Angle_R - SMOTOR_R_Init;
+
     angle.angle_B = Angle - SMOTOR_B_Init;
 
     SMOTOR_SPEED    = Speed;
@@ -515,7 +518,7 @@ CameraTypeDef SMOTOR_CAMERA_MOVE(uint8_t Times, uint16_t Delay, double Speed)
     Camera.Angle  = SMOTOR_Angle;
     Camera.Height = SMOTOR_Height;
     Camera.Long   = SMOTOR_Long;
-    Swing(0);
+    Swing(Front);
     return Camera;
 }
 

@@ -10,7 +10,7 @@ void Servo_Init(void)
 void Init_Status(void)
 {
     Stretch(0);
-    Swing(-90);
+    Swing(0);
 }
 
 /// @brief 机械爪控制
@@ -26,8 +26,8 @@ void Stretch(int16_t Location)
 /// @param Angle 机械臂角度 右:正
 void Swing(int16_t Angle)
 {
-    if(Angle>90)Angle=90;
-    if(Angle<-90)Angle=-90;
-    Angle=(Swing_R-Swing_L)*Angle/180;
-    moveServo(SERVO_Swing, (Swing_L+Swing_R)/2+Angle, Time_ms);
+    Angle=Swing_L+Angle*(Swing_F-Swing_B)/180.0;
+    if(Angle>2500)Angle=2500;
+    if(Angle<500)Angle=500;
+    moveServo(SERVO_Swing, Angle, Time_ms);
 }

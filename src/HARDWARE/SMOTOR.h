@@ -67,10 +67,10 @@ typedef struct Camera {
 
 } CameraTypeDef;
 
-#define SPEED                            110
+#define SPEED                            110//110
 #define Lift                             70
-#define SPEED_B                          180
-#define SPEED_B_MAX                      180
+#define SPEED_B                          170//180
+#define SPEED_B_MAX                      170
 #define SMOTOR_SPEED_K                   200000
 
 #define K_x                              (120.0 / 160)
@@ -85,10 +85,10 @@ typedef struct Camera {
 #define PI                               3.1415926
 
 #define l                                170.0
-#define r                                140.23
+#define r                                135.0 // 140.23
 
-#define SMOTOR_L_Init                    45 // 34.4
-#define SMOTOR_R_Init                    -3
+#define SMOTOR_L_Init                    13 //-3//15
+#define SMOTOR_R_Init                    35 // 34.4//35
 #define SMOTOR_B_Init                    0
 
 #define Angle_Radian(angle)              ((angle) * (PI / 180.0))                       // 角度转弧度
@@ -102,14 +102,14 @@ typedef struct Camera {
 
 #define Modify_(angle_l, angle_r)        (angle_l)
 
-#define Clculate_Angle_L_Z(Long)         (90.0 - Radian_Angle(CosineLaw_Angle(r, l, Long)))
-#define Clculate_Angle_R_Z(Long)         (Radian_Angle(CosineLaw_Angle(Long, l, r) + CosineLaw_Angle(r, l, Long)) - 90.0)
+#define Clculate_Angle_R_Z(Long)         (90.0 - Radian_Angle(CosineLaw_Angle(r, l, Long)))
+#define Clculate_Angle_L_Z(Long)         (Radian_Angle(CosineLaw_Angle(Long, l, r) + CosineLaw_Angle(r, l, Long)) - 90.0)
 
-#define Clculate_Angle_L_P(Long, Height) (180.0 - Radian_Angle(CosineLaw_Angle(Long, Height, sqrt(Long * Long + Height * Height)) + CosineLaw_Angle(r, sqrt(Long * Long + Height * Height), l)))
-#define Clculate_Angle_R_P(Long, Height) (Radian_Angle(CosineLaw_Angle(sqrt(Long * Long + Height * Height), l, r) + CosineLaw_Angle(Long, Height, sqrt(Long * Long + Height * Height)) + CosineLaw_Angle(r, sqrt(Long * Long + Height * Height), l)) - 180.0)
+#define Clculate_Angle_R_P(Long, Height) (180.0 - Radian_Angle(CosineLaw_Angle(Long, Height, sqrt(Long * Long + Height * Height)) + CosineLaw_Angle(r, sqrt(Long * Long + Height * Height), l)))
+#define Clculate_Angle_L_P(Long, Height) (Radian_Angle(CosineLaw_Angle(sqrt(Long * Long + Height * Height), l, r) + CosineLaw_Angle(Long, Height, sqrt(Long * Long + Height * Height)) + CosineLaw_Angle(r, sqrt(Long * Long + Height * Height), l)) - 180.0)
 
-#define Clculate_Angle_L_N(Long, Height) (Radian_Angle(CosineLaw_Angle(Long, sqrt(Long * Long + Height * Height), Height) - CosineLaw_Angle(r, l, sqrt(Long * Long + Height * Height))))
-#define Clculate_Angle_R_N(Long, Height) (Radian_Angle(CosineLaw_Angle(sqrt(Long * Long + Height * Height), l, r) - CosineLaw_Angle(Long, sqrt(Long * Long + Height * Height), Height) + CosineLaw_Angle(r, l, sqrt(Long * Long + Height * Height))))
+#define Clculate_Angle_R_N(Long, Height) (Radian_Angle(CosineLaw_Angle(Long, sqrt(Long * Long + Height * Height), Height) - CosineLaw_Angle(r, l, sqrt(Long * Long + Height * Height))))
+#define Clculate_Angle_L_N(Long, Height) (Radian_Angle(CosineLaw_Angle(sqrt(Long * Long + Height * Height), l, r) - CosineLaw_Angle(Long, sqrt(Long * Long + Height * Height), Height) + CosineLaw_Angle(r, l, sqrt(Long * Long + Height * Height))))
 
 void clock_config(void);
 void NVIC_IQR_Confing(uint8_t nvic_IRQChannel, uint8_t nvic_PreemptionPriority, uint8_t nvic_SubPriority);
