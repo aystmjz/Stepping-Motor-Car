@@ -1,6 +1,3 @@
-#include "stm32f10x.h" // Device header
-#include <stdio.h>
-#include <stdarg.h>
 #include "QR_code.h"
 
 static uint8_t Serial2_RxData;
@@ -146,18 +143,20 @@ uint8_t Usart2SerialGetRxData(void)
  *          命令触发模式
  *          有前缀后缀
  */
+#define Wait_Angle 20
+extern double SMOTOR_Angle;
 void start_scan_QRCode(uint16_t Wait_Time)
 {
-    uint16_t i, timeout = 0,  flag = 0;
-    for (i = 1; i <= 100; i++) {
+    uint16_t i, Times, timeout = 0, flag = 0;
+    for (Times = 1; Times <= 100; Times++) {
         Clear_Buffer();
         uint8_t outbuf[9] = {0x7E, 0x00, 0x08, 0x01, 0x00, 0x02, 0x01, 0xAB, 0xCD};
         for (i = 0; i < 9; i++) { Serial2_SendByte(outbuf[i]); }
         while (!flag) {
             for (i = 0; i <= recevBufindex; i++) {
-                if (recevBuf[i] == PREIX&&recevBuf[i+8] == SUFIX) {
+                if (recevBuf[i] == PREIX && recevBuf[i + 8] == SUFIX) {
                     flag = 1;
-                    for (uint8_t j = 1; j<=7; j++) { Block_Data[j] = recevBuf[j+i] - '0'; }
+                    for (uint8_t j = 1; j <= 7; j++) { Block_Data[j] = recevBuf[j + i] - '0'; }
                 }
             }
             Delay_ms(1);
@@ -167,7 +166,21 @@ void start_scan_QRCode(uint16_t Wait_Time)
                 break;
             }
         }
-        if (flag) return;
+        if (flag) {
+            if (SMOTOR_Angle) SMOTOR_Angle_Adjust(0, 100);
+            return;
+        }
+        if (Times % 2)
+            SMOTOR_Angle_Adjust(Wait_Angle, 20);
+        else
+            SMOTOR_Angle_Adjust(-Wait_Angle, 20);
+        for (i = 0; i <= recevBufindex; i++) {
+            if (recevBuf[i] == PREIX && recevBuf[i + 8] == SUFIX) {
+                for (uint8_t j = 1; j <= 7; j++) { Block_Data[j] = recevBuf[j + i] - '0'; }
+                if (SMOTOR_Angle) SMOTOR_Angle_Adjust(0, 100);
+                return;
+            }
+        }
     }
 }
 

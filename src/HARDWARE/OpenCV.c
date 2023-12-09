@@ -208,20 +208,17 @@ int32_t Get_Excursion()
     // static int16_t last_data = 0;
     // int8_t A1, B1, C1, D1, E1, F1, A2, B2, C2, D2, E2, F2,
     int32_t Excursion = 0, Excursion1 = 0, Excursion2 = 0;
-    // if (getUsartBuf(1) == 0xff || getUsartBuf(2) == 0xff || getUsartBuf(1) == 200 || getUsartBuf(2) == 200 || getUsartBuf(1) == 0 || getUsartBuf(2) == 0) {
-    //     return 0;
-    // }
-    Excursion1 = (getUsartBuf(2) - getUsartBuf(1)) * 4;
-    // Excursion2 = (getUsartBuf(2) + getUsartBuf(1)) / 2 - target;
+    
+    //Excursion1 = (getUsartBuf(2) - getUsartBuf(1)) * 4;
+    Excursion2 = (getUsartBuf(2) + getUsartBuf(1)) / 2 - target;
+    if (getUsartBuf(1) == 200 || getUsartBuf(2) == 200 || getUsartBuf(1) == 0 || getUsartBuf(2) == 0) {
+        Excursion2=0;
+    }
 
     if (Camera_Flag) {
-        Excursion += (Excursion1 + Excursion2) / 9;
+        Excursion += (Excursion1 + Excursion2) /2;
     }
-    if ((Angle_SET > -45 && Angle_SET < 45) && HWT_Angle > 270 && HWT_Angle < 360) {
-        Excursion -= (HWT_Angle - 360.0 - Angle_SET) * HWT_Angle_K;
-    } else {
-        Excursion -= (HWT_Angle - Angle_SET) * HWT_Angle_K;
-    }
+     Excursion -= (HWT_Angle - Angle_SET) * HWT_Angle_K;
 
 #if 0
     A1=getUsartBuf(1)&0x20;

@@ -748,7 +748,6 @@ CameraTypeDef SMOTOR_CAMERA_MOVE(uint8_t Times, uint16_t Delay, double Speed)
     Camera.Angle  = SMOTOR_Angle;
     Camera.Height = SMOTOR_Height;
     Camera.Long   = SMOTOR_Long;
-    Swing(Front);
     return Camera;
 }
 

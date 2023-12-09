@@ -1,9 +1,12 @@
 #ifndef __QR_H
 #define __QR_H
+#include "stm32f10x.h" // Device header
 #include <stdio.h>
 #include "string.h"
 #include "delay.h"
 #include "OLED.h"
+#include <stdarg.h>
+#include "SMOTOR.h"
 #define PREIX       0x23 // 前缀
 #define SUFIX       0x43 // 后缀
 

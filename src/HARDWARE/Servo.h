@@ -10,9 +10,9 @@
 #define Time_ms       90//100
 #define Stretch_MIN   940//950
 #define Stretch_MAX   1900
-#define Swing_F       2210
-#define Swing_L       1570
-#define Swing_B       930
+#define Swing_F       2160
+#define Swing_L       1500
+#define Swing_B       860
 #define Front         90
 #define Behind        -90
 

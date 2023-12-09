@@ -4,7 +4,9 @@ uint8_t HWT_Serial_RxData;
 uint8_t HWT_Serial_RxFlag;
 
 static uint8_t angle_speed_buf[Angle_Speed_Length]; // 角速度的接收数组
-static uint8_t angle_buf[Angle_Length];             // 角度的接收数组
+static uint8_t angleSpeedFlag = 0;
+static uint8_t angle_buf[Angle_Length]; // 角度的接收数组
+static uint8_t angleFlag = 0;
 
 /**
  * @brief 获取角速度(°/s)
@@ -21,18 +23,31 @@ float HWT_getAngleSpeed()
  *
  * @return
  */
+
 float HWT_getAngle()
 {
+    static float Angle_Last = 0, Angle_Round = 0;
     float Angle;
     Angle = (float)((short)(((short)angle_buf[5] << 8) | angle_buf[4])) * 180 / 32768;
-    if (Angle > -180 && Angle < 0) {
-        Angle = -Angle;
-    } else if (Angle > 0 && Angle < 180) {
-        Angle = 360.0 - Angle;
-    } else if (Angle == 180 || Angle == -180) {
-        Angle = 180.0;
+
+    if (!HWT_getFlag(ANGLE_STATE)) {
+        Angle = Angle_Last;
+        Buzzer_Tow(200);
+    } else {
+        if (Angle > -180 && Angle < 0) {
+            Angle = -Angle;
+        } else if (Angle > 0 && Angle < 180) {
+            Angle = 360.0 - Angle;
+        } else if (Angle == 180 || Angle == -180) {
+            Angle = 180.0;
+        }
+        if (Angle_Last - Angle > 270)
+            Angle_Round++;
+        if (Angle_Last - Angle < -270)
+            Angle_Round--;
+        Angle_Last = Angle;
     }
-    return Angle;
+    return 360.0 * Angle_Round + Angle;
 }
 
 /**
@@ -57,11 +72,42 @@ void HWT_setBaud(uint8_t bitrate)
 }
 
 /**
+ * @brief 检验角度/角速度的数据是否正确
+ *
+ * @param state
+ * @return uint8_t
+ */
+uint8_t HWT_getFlag(uint8_t state)
+{
+    if (state == ANGLE_SPEED_STATE) {
+        return angleSpeedFlag;
+    } else if (state == ANGLE_STATE) {
+        return angleFlag;
+    }
+    return 255;
+}
+
+/**
+ * @brief 设置角度和角速度判断的标志位
+ *
+ * @param state ANGLE_SPEED_STATE or　ANGLE_STATE
+ * @param ifset true or false
+ */
+void HWT_setFlag(uint8_t state, uint8_t ifset)
+{
+    if (state == ANGLE_SPEED_STATE) {
+        angleSpeedFlag = ifset;
+    } else if (state == ANGLE_STATE) {
+        angleFlag = ifset;
+    }
+}
+
+/**
  * @brief 检验和验证
  *
  * @return signed char
  */
-int8_t HWT_verifySUM(uint8_t state)
+uint8_t HWT_verifySUM(uint8_t state)
 {
     uint8_t sum = 0;
     if (state == ANGLE_SPEED_STATE) {
@@ -128,17 +174,19 @@ void HWTCalc()
             angle_speed_buf[angle_speed_index++] = rdata;
             state                                = FrameHeaderFlag;
             angle_speed_index                    = 0;
-            // if (HWT_verifySUM(ANGLE_SPEED_STATE) == 0) {
-            //     memset(angle_speed_buf, 0, sizeof(uint8_t) * 9);
-            // }
+            if (HWT_verifySUM(ANGLE_SPEED_STATE) == 0) {
+                HWT_setFlag(ANGLE_SPEED_STATE, 0);
+            }
+            HWT_setFlag(ANGLE_SPEED_STATE, 1);
             break;
         case AngleTailFlag: // 处理角度的帧尾
             angle_buf[angle_index++] = rdata;
             state                    = FrameHeaderFlag;
             angle_index              = 0;
-            // if (HWT_verifySUM(ANGLE_STATE) == 0) {
-            //     memset(angle_buf, 0, sizeof(uint8_t) * 9);
-            // }
+            if (HWT_verifySUM(ANGLE_STATE) == 0) {
+                HWT_setFlag(ANGLE_STATE, 0);
+            }
+            HWT_setFlag(ANGLE_STATE, 1);
             break;
         default:
             break;
@@ -191,7 +239,7 @@ void HWT101CT_Init(void)
 {
     HWT_Serial_Init();
     Delay_ms(100);
-    angle_buf[5]=0xff;
+    angle_buf[5] = 0xff;
     while (HWT_getAngle()) {
         HWT_setZero();
         Delay_ms(100);

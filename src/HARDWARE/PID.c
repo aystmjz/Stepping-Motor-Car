@@ -383,17 +383,11 @@ void MOTOR_Spin(Direction Vale, int32_t Angle, int32_t Spead)
 {
 
 #ifdef S_Spin
-    if (Vale == Left) {
-        if (Angle_SET + Angle > 360.0) Angle_SET -= 360.0;
+    if (Vale == Left)
         Angle_SET += Angle;
-    } else {
-        if (Angle_SET - Angle < 0) Angle_SET += 360.0;
+    else if (Vale == Right)
         Angle_SET -= Angle;
-    }
-    Delay_ms(100);
-    // if ((Angle_SET>-45&&Angle_SET<45) && HWT_Angle > 270 && HWT_Angle < 360) {
-    //     Excursion += (Excursion1 + Excursion2) / 9 -(HWT_Angle-360.0-Angle_SET) * HWT_Angle_K;
-    // } else {
+    Delay_ms(200);
     if (Angle > -30 && Angle < 30) {
         Angle = (int32_t)((float)Angle * 81.5); // 26.8//74.8//79
         switch (Vale) {
@@ -420,11 +414,10 @@ void MOTOR_Spin(Direction Vale, int32_t Angle, int32_t Spead)
         switch (Vale) {
             case Left:
                 MOTOR_Clear(MOTOR_Left | MOTOR_Right);
-                while ((Angle_SET - HWT_Angle) > Angle_EX || (Angle_SET - HWT_Angle) < -Angle_EX) {
+                while ((Angle_SET -HWT_Angle) > Angle_EX) {
                     if (!(MOTOR_CONTROL(Spead, Angle, MOTOR_Right) | MOTOR_CONTROL(Spead, 0, MOTOR_Left))) {
                         MOTOR_Clear(MOTOR_Left | MOTOR_Right);
                         MOTOR_CONTROL(Spead, 0, MOTOR_Left | MOTOR_Right);
-                        if (Angle_SET == 360) Angle_SET = 0;
                         Buzzer_Tow(200);
                         return;
                     }
@@ -437,11 +430,10 @@ void MOTOR_Spin(Direction Vale, int32_t Angle, int32_t Spead)
 
             case Right:
                 MOTOR_Clear(MOTOR_Left | MOTOR_Right);
-                while ((Angle_SET - HWT_Angle) > Angle_EX || (Angle_SET - HWT_Angle) < -Angle_EX) {
+                while ((HWT_Angle - Angle_SET) > Angle_EX) {
                     if (!(MOTOR_CONTROL(Spead, Angle, MOTOR_Left) | MOTOR_CONTROL(Spead, 0, MOTOR_Right))) {
                         MOTOR_Clear(MOTOR_Left | MOTOR_Right);
                         MOTOR_CONTROL(Spead, 0, MOTOR_Left | MOTOR_Right);
-                        if (Angle_SET == 360) Angle_SET = 0;
                         Buzzer_Tow(200);
                         return;
                     }
@@ -453,7 +445,6 @@ void MOTOR_Spin(Direction Vale, int32_t Angle, int32_t Spead)
                 break;
         }
     }
-    if (Angle_SET == 360) Angle_SET = 0;
     Delay_ms(1000);
 
 #else

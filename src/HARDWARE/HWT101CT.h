@@ -3,6 +3,7 @@
 #include "stm32f10x.h"
 #include "OLED.h"
 #include "Delay.h"
+#include "Buzzer.h"
 #include <stdio.h>
 
 #define Angle_Speed_Length 9
@@ -28,5 +29,9 @@ void HWT_Serial_SendNumber(uint32_t Number, uint8_t Length);
 
 uint8_t HWT_Serial_GetRxFlag(void);
 uint8_t HWT_Serial_GetRxData(void);
+
+uint8_t HWT_verifySUM(uint8_t state);
+void HWT_setFlag(uint8_t state, uint8_t ifset);
+uint8_t HWT_getFlag(uint8_t state);
 
 #endif
