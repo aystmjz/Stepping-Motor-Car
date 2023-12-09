@@ -376,7 +376,7 @@ void MOTOR_Spin(Direction Vale, int32_t Angle, int32_t Spead)
 
 #ifdef S_Spin
     Delay_ms(200);
-    Angle = (int32_t)((float)Angle * 81); // 26.8//74.8//79
+    Angle = (int32_t)((float)Angle * 81.5); // 26.8//74.8//79
     // Spead+=10;
     switch (Vale) {
         case 0x01:

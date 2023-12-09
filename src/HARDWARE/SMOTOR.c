@@ -325,7 +325,7 @@ void SMOTOR_MOVE(double Long, double Height, double Angle, double Speed)
     if (Long > Long_MAX || Long < Long_MIN) {
         Buzzer_ON();
         Buzzer_Debug = 1;
-        Delay_ms(500);
+        Delay_ms(100);
         Buzzer_OFF();
         Buzzer_Debug = 0;
         if (Long > Long_MAX)
