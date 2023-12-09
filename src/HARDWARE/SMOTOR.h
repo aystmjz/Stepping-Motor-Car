@@ -69,8 +69,8 @@ typedef struct Camera {
 
 #define SPEED                            110//110
 #define Lift                             70
-#define SPEED_B                          170//180
-#define SPEED_B_MAX                      170
+#define SPEED_B                          300//180
+#define SPEED_B_MAX                      300
 #define SMOTOR_SPEED_K                   200000
 
 #define K_x                              (120.0 / 160)

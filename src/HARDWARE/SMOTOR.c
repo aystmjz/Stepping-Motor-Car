@@ -254,6 +254,44 @@ void SMOTOR_RESET(double Long, double Height, double Angle, int8_t SMOTOR)
     SMOTOR_B_Location   = result.angle_B * 200 / 9;
 }
 
+
+/// @brief 调整步进电机
+/// @param SMOTOR 目标电机（支持SMOTOR_L|SMOTOR_R写法）
+void SMOTOR_Adjust(double Long, double Height, double Angle, int8_t SMOTOR)
+{
+    switch (SMOTOR) {
+        case SMOTOR_L:
+            SMOTOR_L_flag = 0;
+            break;
+        case SMOTOR_R:
+            SMOTOR_R_flag = 0;
+            break;
+        case SMOTOR_B:
+            SMOTOR_B_flag = 0;
+            break;
+        case SMOTOR_L | SMOTOR_R:
+            SMOTOR_L_flag = 0;
+            SMOTOR_R_flag = 0;
+            break;
+        case SMOTOR_R | SMOTOR_B:
+            SMOTOR_R_flag = 0;
+            SMOTOR_B_flag = 0;
+            break;
+        case SMOTOR_L | SMOTOR_B:
+            SMOTOR_L_flag = 0;
+            SMOTOR_B_flag = 0;
+            break;
+        case SMOTOR_L | SMOTOR_R | SMOTOR_B:
+            SMOTOR_L_flag = 0;
+            SMOTOR_R_flag = 0;
+            SMOTOR_B_flag = 0;
+            break;
+    }
+    angleTypeDef result = SMOTOR_ANGLE(Long, Height, Angle, SMOTOR_SPEED);
+    SMOTOR_L_Location   = result.angle_L * 200 / 9;
+    SMOTOR_R_Location   = result.angle_R * 200 / 9;
+    SMOTOR_B_Location   = result.angle_B * 200 / 9;
+}
 /// @brief 步进电机控制
 /// @param Spead 速度（）
 /// @param Location 角度（500对应转动22.5度）

@@ -141,13 +141,16 @@ void Buzzer_Tow(uint16_t Time)
 }
 
 #define Adjust_Delta_B 5 // 0.4
-#define Adjust_Slow_K 0.1
-#define Adjust_Slow_Speed 50
-extern int32_t SMOTOR_B_Location; 
-extern double SMOTOR_B_Angle;
+#define Adjust_Slow_Step_K 0.008
+#define Adjust_Slow_Step 30
+#define Adjust_Slow_Speed_K 1.09
+#define Adjust_Slow_Speed 45
+extern int32_t SMOTOR_B_Location;
+extern double SMOTOR_B_Angle,SMOTOR_B_target,SMOTOR_B_step;
 
 void SMOTOR_Angle_Adjust(double Angle, double Speed)
 {
+    /*
     if (!Angle) {
         angleTypeDef result;
         Sensor_Spin_Flag = 1;
@@ -171,6 +174,62 @@ void SMOTOR_Angle_Adjust(double Angle, double Speed)
         while (Get_State(SMOTOR_B)) {};
     // }
     // SMOTOR_MOVE(SMOTOR_Long, SMOTOR_Height, Angle, Speed);
+*/
+    uint8_t Adjust_Flag=0;
+    uint16_t Adjust_Error=0;//(SMOTOR_Angle>0&&Angle<0)||
+    if((SMOTOR_Angle<0&&Angle>0))Adjust_Flag=1;
+    angleTypeDef result= SMOTOR_ANGLE(SMOTOR_Long, SMOTOR_Height, Angle, Speed);
+    double  SMOTOR_SPEED_B=SMOTOR_SPEED_K / Adjust_Slow_Speed;
+    double  Location_Delta_B=result.angle_B* 200 / 9 - SMOTOR_B_Location;
+    double Location_B=SMOTOR_B_Location;
+     
+    for(uint8_t i=1;i<=Adjust_Slow_Step;i++)
+    {
+        if(i!=1)SMOTOR_SPEED_B/=Adjust_Slow_Speed_K;
+        Location_B+=Location_Delta_B*Adjust_Slow_Step_K;
+
+        if(SMOTOR_SPEED_B<SMOTOR_SPEED_K /Speed)
+        SMOTOR_CONTROL(SMOTOR_SPEED_K /Speed, Location_B, SMOTOR_B);
+        else SMOTOR_CONTROL(SMOTOR_SPEED_B, Location_B, SMOTOR_B);
+
+        if(Adjust_Flag){
+
+            while (LightSensor_Spin() && Get_State(SMOTOR_B)) {}
+            if(Get_State(SMOTOR_B)){ Location_Delta_B=(Location_Delta_B*Adjust_Slow_Step_K*(Adjust_Slow_Step-1.0)-Adjust_Error)/((Adjust_Slow_Step-1.0)*Location_Delta_B);Adjust_Error=SMOTOR_B_target-SMOTOR_B_step;Location_B=0;Adjust_Flag=0;Sensor_Spin_Flag=1;Buzzer_ON();}
+
+        }
+        else while (Get_State(SMOTOR_B)) {};
+
+    }
+    Location_B+=Location_Delta_B-Location_Delta_B*Adjust_Slow_Step_K*Adjust_Slow_Step*2;
+
+    if(SMOTOR_SPEED_B<SMOTOR_SPEED_K /Speed)
+    SMOTOR_CONTROL(SMOTOR_SPEED_K /Speed, Location_B, SMOTOR_B);
+    else SMOTOR_CONTROL(SMOTOR_SPEED_B, Location_B, SMOTOR_B);
+
+    if(Adjust_Flag){
+
+            while (LightSensor_Spin() && Get_State(SMOTOR_B)) {}
+            if(Get_State(SMOTOR_B)){ Location_Delta_B=(Location_Delta_B*Adjust_Slow_Step_K*(Adjust_Slow_Step-1.0)-Adjust_Error)/((Adjust_Slow_Step-1.0)*Location_Delta_B);Adjust_Error=SMOTOR_B_target-SMOTOR_B_step;Location_B=0;Adjust_Flag=0;Sensor_Spin_Flag=1;Buzzer_ON();}
+
+        }
+    else while (Get_State(SMOTOR_B)) {};
+    Location_B-=Adjust_Error;
+
+    for(uint8_t i=1;i<=Adjust_Slow_Step-1;i++)
+    {
+        SMOTOR_SPEED_B*=Adjust_Slow_Speed_K;
+        Location_B+=Location_Delta_B*Adjust_Slow_Step_K;
+
+        if(SMOTOR_SPEED_B<SMOTOR_SPEED_K /Speed)
+        SMOTOR_CONTROL(SMOTOR_SPEED_K /Speed, Location_B, SMOTOR_B);
+        else SMOTOR_CONTROL(SMOTOR_SPEED_B, Location_B, SMOTOR_B);
+
+        while (Get_State(SMOTOR_B)) {};
+    }
+    SMOTOR_CONTROL(SMOTOR_SPEED_B, result.angle_B * 200 / 9, SMOTOR_B);
+    while (Get_State(SMOTOR_B)) {};
+    Sensor_Spin_Flag=0;
 }
 
 #define Suspend_Long      200 // 160
@@ -464,20 +523,30 @@ int main(void)
     Block_Data[7] = 1;
     Nixie_Show();
     Display_();
-    switch (1) {
+    switch (-1) {
             // 取物料
         case -1:
+        SMOTOR_MOVE(115, 0, 0, 60); 
+        Delay_ms(100);
+            SMOTOR_MOVE_Suspend(0, Lift);
             while (1) {
-                // MOTOR_F(1000);
-                SMOTOR_Angle_Adjust(0, SPEED_B);
-                Stretch(0);
-                Swing(Behind);
-                Delay_ms(1000);
-                // MOTOR_F(-1000);
-                SMOTOR_Angle_Adjust(90, SPEED_B);
-                Stretch(40);
-                Swing(Front);
-                Delay_ms(1000);
+            
+            SMOTOR_Angle_Adjust(10, 100);
+            Delay_ms(500);
+            SMOTOR_Angle_Adjust(0, 100);
+            Delay_ms(500);
+            SMOTOR_Angle_Adjust(30, 200);
+            Delay_ms(500);
+            SMOTOR_Angle_Adjust(-10, 200);
+            Delay_ms(500);
+            SMOTOR_Angle_Adjust(60, 250);
+            Delay_ms(500);
+            SMOTOR_Angle_Adjust(-10, 250);
+            Delay_ms(500);
+             SMOTOR_Angle_Adjust(90, SPEED_B);
+            Delay_ms(500);
+            SMOTOR_Angle_Adjust(-10, SPEED_B);
+            Delay_ms(500);
             }
             break;
 
@@ -939,7 +1008,7 @@ void TIM6_IRQHandler(void)
             MOTOR_Spead_calc();
         } else
 
-            PID_L.current_l = Encoder_Left_Get();
+        PID_L.current_l = Encoder_Left_Get();
         PID_L.current_s = MOTOR_LeftSpead;
         PID_R.current_l = Encoder_Right_Get();
         PID_R.current_s = MOTOR_RightSpead;
