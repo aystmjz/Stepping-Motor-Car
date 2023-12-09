@@ -7,12 +7,13 @@ int32_t SMOTOR_L_Location = 0, SMOTOR_R_Location = 0, SMOTOR_B_Location = 0;
 double SMOTOR_L_Angle = 0, SMOTOR_R_Angle = 0, SMOTOR_B_Angle = 0;
 double SMOTOR_Long = 0, SMOTOR_Height = 0, SMOTOR_Angle = 0;
 
-double SMOTOR_SPEED=80;
+double SMOTOR_SPEED = 80;
 
 void clock_config(void)
 {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOG, ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE); // 使能AFIO外设时钟,AFIO配置io口
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
@@ -42,16 +43,24 @@ void SMOTOR_TIM_Init(void)
     TIM_TimeBaseInitTypeDef motor_TimeInit;
     TIM_OCInitTypeDef motor_OCInit;
 
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+    GPIO_PinRemapConfig(GPIO_PartialRemap1_TIM2, ENABLE);
+    GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
+
     // 1.引脚初始化
     GPIO_InitTypeDef motor_gpio_init;
-    motor_gpio_init.GPIO_Pin   = DIR_GPIO_A;
-    motor_gpio_init.GPIO_Mode  = GPIO_Mode_Out_PP;
-    motor_gpio_init.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOA, &motor_gpio_init); // DIR ENABLE 通用推挽输出模式
     motor_gpio_init.GPIO_Pin   = DIR_GPIO_B;
     motor_gpio_init.GPIO_Mode  = GPIO_Mode_Out_PP;
     motor_gpio_init.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOB, &motor_gpio_init); // DIR ENABLE 通用推挽输出模式
+    motor_gpio_init.GPIO_Pin   = DIR_GPIO_A;
+    motor_gpio_init.GPIO_Mode  = GPIO_Mode_Out_PP;
+    motor_gpio_init.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOA, &motor_gpio_init); // DIR ENABLE 通用推挽输出模式
+    motor_gpio_init.GPIO_Pin   = DIR_GPIO_G;
+    motor_gpio_init.GPIO_Mode  = GPIO_Mode_Out_PP;
+    motor_gpio_init.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOG, &motor_gpio_init); // DIR ENABLE 通用推挽输出模式
     motor_gpio_init.GPIO_Pin  = STEP_GPIO_A;
     motor_gpio_init.GPIO_Mode = GPIO_Mode_AF_PP;
     GPIO_Init(GPIOA, &motor_gpio_init); // STEP 复用推挽输出
@@ -118,14 +127,14 @@ void SET_TIM(Tim Vale, uint16_t ARR, uint16_t CCR)
     }
 }
 
-void SET_Direction(uint8_t SMOTOR, Direction Dir)
+void SET_Rotation(uint8_t SMOTOR, Rotation Dir)
 {
     switch (SMOTOR) {
         case SMOTOR_L:
-            GPIO_WriteBit(GPIOA, GPIO_Pin_0, (BitAction)(Dir));
+            GPIO_WriteBit(GPIOG, GPIO_Pin_15, (BitAction)(Dir));
             break;
         case SMOTOR_R:
-            GPIO_WriteBit(GPIOB, GPIO_Pin_0, (BitAction)(Dir));
+            GPIO_WriteBit(GPIOA, GPIO_Pin_5, (BitAction)(Dir));
             break;
         case SMOTOR_B:
             GPIO_WriteBit(GPIOB, GPIO_Pin_8, (BitAction)(Dir));
@@ -197,53 +206,46 @@ uint8_t Get_State(uint8_t SMOTOR)
 
 /// @brief 初始化步进电机
 /// @param SMOTOR 目标电机（支持SMOTOR_L|SMOTOR_R写法）
-void SMOTOR_RESET(uint8_t SMOTOR)
+void SMOTOR_RESET(double Long, double Height, double Angle, int8_t SMOTOR)
 {
+    angleTypeDef result = SMOTOR_ANGLE(Long, Height, Angle, SMOTOR_SPEED);
+    SMOTOR_L_Location   = result.angle_L * 200 / 9;
+    SMOTOR_R_Location   = result.angle_R * 200 / 9;
+    SMOTOR_B_Location   = result.angle_B * 200 / 9;
+
     switch (SMOTOR) {
         case SMOTOR_L:
-            SMOTOR_L_Location = 0;
-            SMOTOR_L_flag     = 0;
+            SMOTOR_L_flag = 0;
             SMOTOR_STOP(SMOTOR_L);
             break;
         case SMOTOR_R:
-            SMOTOR_R_Location = 0;
-            SMOTOR_R_flag     = 0;
+            SMOTOR_R_flag = 0;
             SMOTOR_STOP(SMOTOR_R);
             break;
         case SMOTOR_B:
-            SMOTOR_B_Location = 0;
-            SMOTOR_B_flag     = 0;
+            SMOTOR_B_flag = 0;
             SMOTOR_STOP(SMOTOR_B);
             break;
         case SMOTOR_L | SMOTOR_R:
-            SMOTOR_L_Location = 0;
-            SMOTOR_R_Location = 0;
-            SMOTOR_L_flag     = 0;
+            SMOTOR_L_flag = 0;
             SMOTOR_STOP(SMOTOR_L);
             SMOTOR_R_flag = 0;
             SMOTOR_STOP(SMOTOR_R);
             break;
         case SMOTOR_R | SMOTOR_B:
-            SMOTOR_R_Location = 0;
-            SMOTOR_B_Location = 0;
-            SMOTOR_R_flag     = 0;
+            SMOTOR_R_flag = 0;
             SMOTOR_STOP(SMOTOR_R);
             SMOTOR_B_flag = 0;
             SMOTOR_STOP(SMOTOR_B);
             break;
         case SMOTOR_L | SMOTOR_B:
-            SMOTOR_L_Location = 0;
-            SMOTOR_B_Location = 0;
-            SMOTOR_L_flag     = 0;
+            SMOTOR_L_flag = 0;
             SMOTOR_STOP(SMOTOR_L);
             SMOTOR_B_flag = 0;
             SMOTOR_STOP(SMOTOR_B);
             break;
         case SMOTOR_L | SMOTOR_R | SMOTOR_B:
-            SMOTOR_L_Location = 0;
-            SMOTOR_R_Location = 0;
-            SMOTOR_B_Location = 0;
-            SMOTOR_L_flag     = 0;
+            SMOTOR_L_flag = 0;
             SMOTOR_STOP(SMOTOR_L);
             SMOTOR_R_flag = 0;
             SMOTOR_STOP(SMOTOR_R);
@@ -270,9 +272,9 @@ void SMOTOR_CONTROL(uint32_t Spead, int32_t Location, uint8_t SMOTOR)
                 SMOTOR_L_Location = Location;
                 if (Error < 0) {
                     Error = -Error;
-                    SET_Direction(SMOTOR, Backward);
+                    SET_Rotation(SMOTOR, Backward);
                 } else
-                    SET_Direction(SMOTOR, Forward);
+                    SET_Rotation(SMOTOR, Forward);
                 SMOTOR_L_target = Error;
                 SET_TIM(Tim2, Spead - 1, Spead / 2 - 1);
                 SMOTOR_START(SMOTOR_L);
@@ -286,9 +288,9 @@ void SMOTOR_CONTROL(uint32_t Spead, int32_t Location, uint8_t SMOTOR)
                 SMOTOR_R_Location = Location;
                 if (Error < 0) {
                     Error = -Error;
-                    SET_Direction(SMOTOR, Backward);
+                    SET_Rotation(SMOTOR, Backward);
                 } else
-                    SET_Direction(SMOTOR, Forward);
+                    SET_Rotation(SMOTOR, Forward);
                 SMOTOR_R_target = Error;
                 SET_TIM(Tim3, Spead - 1, Spead / 2 - 1);
                 SMOTOR_START(SMOTOR_R);
@@ -302,9 +304,9 @@ void SMOTOR_CONTROL(uint32_t Spead, int32_t Location, uint8_t SMOTOR)
                 SMOTOR_B_Location = Location;
                 if (Error < 0) {
                     Error = -Error;
-                    SET_Direction(SMOTOR, Backward);
+                    SET_Rotation(SMOTOR, Backward);
                 } else
-                    SET_Direction(SMOTOR, Forward);
+                    SET_Rotation(SMOTOR, Forward);
                 SMOTOR_B_target = Error;
                 SET_TIM(Tim4, Spead - 1, Spead / 2 - 1);
                 SMOTOR_START(SMOTOR_B);
@@ -317,11 +319,10 @@ void SMOTOR_CONTROL(uint32_t Spead, int32_t Location, uint8_t SMOTOR)
 /// @param Long 机械臂伸出长度
 /// @param Height 机械臂底端高度
 /// @param Angle 机械臂旋转角度
-void SMOTOR_MOVE(double Long, double Height, double Angle,double Speed)
+void SMOTOR_MOVE(double Long, double Height, double Angle, double Speed)
 {
-    SMOTOR_SPEED=Speed;
     angleTypeDef result;
-    result = SMOTOR_ANGLE(Long, Height, Angle);
+    result = SMOTOR_ANGLE(Long, Height, Angle, Speed);
     SMOTOR_CONTROL(result.speed_L, result.angle_L * 200 / 9, SMOTOR_L);
     SMOTOR_CONTROL(result.speed_R, result.angle_R * 200 / 9, SMOTOR_R);
     SMOTOR_CONTROL(result.speed_B, result.angle_B * 200 / 9, SMOTOR_B);
@@ -332,26 +333,29 @@ void SMOTOR_MOVE(double Long, double Height, double Angle,double Speed)
 /// @param Delta_Long 机械臂伸出相对长度
 /// @param Delta_Height 机械臂底端相对高度
 /// @param Delta_Angle 机械臂旋转相对角度
-void SMOTOR_Delta_MOVE(double Delta_Long, double Delta_Height, double Delta_Angle,double Speed)
+void SMOTOR_Delta_MOVE(double Delta_Long, double Delta_Height, double Delta_Angle, double Speed)
 {
-    SMOTOR_SPEED=Speed;
     angleTypeDef result;
-    result = SMOTOR_ANGLE(SMOTOR_Long + Delta_Long, SMOTOR_Height + Delta_Height, SMOTOR_Angle + Delta_Angle);
+    result = SMOTOR_ANGLE(SMOTOR_Long + Delta_Long, SMOTOR_Height + Delta_Height, SMOTOR_Angle + Delta_Angle, Speed);
     SMOTOR_CONTROL(result.speed_L, result.angle_L * 200 / 9, SMOTOR_L);
     SMOTOR_CONTROL(result.speed_R, result.angle_R * 200 / 9, SMOTOR_R);
     SMOTOR_CONTROL(result.speed_B, result.angle_B * 200 / 9, SMOTOR_B);
     while (Get_State(SMOTOR_L | SMOTOR_R | SMOTOR_B)) {}
 }
 
-void SMOTOR_XY_MOVE(double Location_X, double Location_Y, double Height,double Speed)
+/// @brief 移动摄像头到相对XY位置(以机械臂目前的角度建系)
+/// @param Location_X x
+/// @param Location_Y y
+/// @param Height 机械臂底端相对高度
+/// @param Speed 机械臂移动速度
+void SMOTOR_XY_MOVE(double Location_X, double Location_Y, double Height, double Speed)
 {
     double Long, Angle;
-    SMOTOR_SPEED=Speed;
-    Angle = Angle_Grasp;
+    Angle = SMOTOR_Angle;
     Long  = sqrt(Location_Y * Location_Y + Location_X * Location_X);
-    Angle -= Angle_Clculate(Location_X, (Location_Y + Location_X));
+    Angle -= Angle_Clculate(Location_X, Location_Y);
     Long -= Camera_Distance;
-    SMOTOR_MOVE(Long, Height, Angle,Speed);
+    SMOTOR_MOVE(Long, Height, Angle, Speed);
 }
 /// @brief 复位步进电机
 /// @param SMOTOR 目标电机（支持SMOTOR_L|SMOTOR_R写法）
@@ -399,7 +403,7 @@ void SMOTOR_ResetLocation(uint8_t SMOTOR)
 /// @param Height 机械臂底端高度
 /// @param Angle 机械臂旋转角度
 /// @return 角度计算结果
-angleTypeDef SMOTOR_ANGLE(double Long, double Height, double Angle)
+angleTypeDef SMOTOR_ANGLE(double Long, double Height, double Angle, double Speed)
 {
     angleTypeDef angle;
     double Angle_L, Angle_R;
@@ -422,8 +426,10 @@ angleTypeDef SMOTOR_ANGLE(double Long, double Height, double Angle)
 
     angle.angle_L = Modify(Angle_L, Angle_R) - Modify(SMOTOR_L_Init, SMOTOR_R_Init);
     angle.angle_R = Angle_R - SMOTOR_R_Init;
+    // if(angle.angle_R<0)angle.angle_R=0;
     angle.angle_B = Angle - SMOTOR_B_Init;
 
+    SMOTOR_SPEED    = Speed;
     Delta_Angle_max = SMOTOR_L_Angle - angle.angle_L;
     Delta_Angle_min = SMOTOR_R_Angle - angle.angle_R;
     Delta_Angle_B   = SMOTOR_B_Angle - angle.angle_B;
@@ -433,18 +439,18 @@ angleTypeDef SMOTOR_ANGLE(double Long, double Height, double Angle)
     if (Delta_Angle_B < 0) Delta_Angle_B = -Delta_Angle_B;
 
     if (!Delta_Angle_max || !Delta_Angle_min) {
-        angle.speed_L = SMOTOR_SPEED_K / SMOTOR_SPEED;
-        angle.speed_R = SMOTOR_SPEED_K / SMOTOR_SPEED;
+        angle.speed_L = SMOTOR_SPEED_K / Speed;
+        angle.speed_R = SMOTOR_SPEED_K / Speed;
         angle.speed_B = SMOTOR_SPEED_K / SMOTOR_SPEED_B;
 
     } else if (Delta_Angle_max > Delta_Angle_min) {
-        angle.speed_L = SMOTOR_SPEED_K / SMOTOR_SPEED;
-        angle.speed_R = (Delta_Angle_max * SMOTOR_SPEED_K) / (Delta_Angle_min * SMOTOR_SPEED);
-        angle.speed_B = (Delta_Angle_max * SMOTOR_SPEED_K) / (Delta_Angle_B * SMOTOR_SPEED);
+        angle.speed_L = SMOTOR_SPEED_K / Speed;
+        angle.speed_R = (Delta_Angle_max * SMOTOR_SPEED_K) / (Delta_Angle_min * Speed);
+        angle.speed_B = (Delta_Angle_max * SMOTOR_SPEED_K) / (Delta_Angle_B * Speed);
     } else {
-        angle.speed_R = SMOTOR_SPEED_K / SMOTOR_SPEED;
-        angle.speed_L = (Delta_Angle_min * SMOTOR_SPEED_K) / (Delta_Angle_max * SMOTOR_SPEED);
-        angle.speed_B = (Delta_Angle_min * SMOTOR_SPEED_K) / (Delta_Angle_B * SMOTOR_SPEED);
+        angle.speed_R = SMOTOR_SPEED_K / Speed;
+        angle.speed_L = (Delta_Angle_min * SMOTOR_SPEED_K) / (Delta_Angle_max * Speed);
+        angle.speed_B = (Delta_Angle_min * SMOTOR_SPEED_K) / (Delta_Angle_B * Speed);
     }
     if (angle.speed_B < SMOTOR_SPEED_K / SMOTOR_SPEED_B_MAX) angle.speed_B = SMOTOR_SPEED_K / SMOTOR_SPEED_B_MAX;
     SMOTOR_L_Angle = angle.angle_L;
@@ -454,121 +460,29 @@ angleTypeDef SMOTOR_ANGLE(double Long, double Height, double Angle)
     return angle;
 }
 
-/// @brief 摄像头粗略调整
+/// @brief 摄像头调整
 /// @param Camera_x 摄像头识别x坐标
 /// @param Camera_y 摄像头识别y坐标
-/// @param Distance 机械臂伸出长度
-/// @param Height 机械臂目标底端高度
-void CAMERA_ANGLE(double Camera_x, double Camera_y,double Speed)
+/// @param Times
+/// @param Delay
+/// @param Speed
+/// @return
+uint8_t SMOTOR_CAMERA_MOVE(uint8_t Times, uint16_t Delay, double Speed)
 {
-    Camera_x *= K_x;
-    Camera_y *= K_y;
-    SMOTOR_XY_MOVE(Camera_x,SMOTOR_Long + Camera_Distance+ Camera_y, SMOTOR_Height,Speed);
-}
-
-
-void CAMERA_ANGLE_(double Camera_x, double Camera_y, double Distance, double Height)
-{
-    double Long, Angle;
-    Camera_x *= K_x;
-    Camera_y *= K_y;
-    Distance+=Camera_Distance;
-    Angle=Angle_Grasp;
-    if (Camera_x >= 0 && Camera_y >= 0) {
-        Long  = sqrt((Distance + Camera_y) * (Distance + Camera_y) + Camera_x * Camera_x);
-        Angle -= Angle_Clculate(Camera_x ,(Camera_y + Distance));
-    } else if (Camera_x <= 0 && Camera_y <= 0) {
-        Long  = sqrt((Distance + Camera_y) * (Distance + Camera_y) + Camera_x * Camera_x);
-        Angle += Angle_Clculate(-Camera_x , (Camera_y + Distance));
-    } else if (Camera_x < 0 && Camera_y > 0) {
-        Long  = sqrt((Distance + Camera_y) * (Distance + Camera_y) + Camera_x * Camera_x);
-        Angle += Angle_Clculate(-Camera_x, (Camera_y + Distance));
-    } else {
-        Long  = sqrt((Distance + Camera_y) * (Distance + Camera_y) + Camera_x * Camera_x);
-        Angle -= Angle_Clculate(Camera_x , (Camera_y + Distance));
+    double Camera_x, Camera_y,Long ,Angle;
+    Long= SMOTOR_Long + 60;
+    Angle = SMOTOR_Angle + 40;
+    while (Camera_X == 255 || Camera_Y == 255) {
+        SMOTOR_MOVE(Long, SMOTOR_Height, Angle, SPEED);
     }
-    Long-=Camera_Distance;
-    SMOTOR_Long   = Long;
-    SMOTOR_Height = Height;
-    SMOTOR_Angle  = Angle;
-    angleTypeDef result;
-    result = SMOTOR_ANGLE(Long, Height, Angle);
-    SMOTOR_CONTROL(result.speed_L, result.angle_L * 200 / 9, SMOTOR_L);
-    SMOTOR_CONTROL(result.speed_R, result.angle_R * 200 / 9, SMOTOR_R);
-    SMOTOR_CONTROL(result.speed_B, result.angle_B * 200 / 9, SMOTOR_B);
-    while (Get_State(SMOTOR_L | SMOTOR_R | SMOTOR_B)) {}
-
-}
-/**
- * @brief 校准机械臂
- *
- */
-void smotor_calibrate()
-{
-    // 坐标
-    float x;
-    float y;
-    // 误差范围
-    float min_calibrate;
-    float max_calibrate;
-    // 在范围之外就继续校准
-    while ((x > max_calibrate) || (x < min_calibrate) ||
-           (y > max_calibrate) || (y < min_calibrate)) {
-        // 不断接收数据并不断校准
+    for (int i = 0; i < Times; i++) {
+        if (i) Delay_ms(Delay);
+        Camera_x = Camera_X * K_x;
+        Camera_y = Camera_Y * K_y;
+        SMOTOR_XY_MOVE(Camera_x, SMOTOR_Long + Camera_Distance + Camera_y, SMOTOR_Height, Speed);
     }
-    // 校准完成
-}
-
-/**
- * @brief 抓物料
- *
- */
-void smotor_grasp_obj()
-{
-    float datax = getUsartBuf_float(0);
-    float datay = getUsartBuf_float(4);
-    struct angles result1;
-    struct angles result2;
-
-    OLED_ShowSignedNum(1, 4, datax * 10000, 8);
-    OLED_ShowSignedNum(2, 4, datay * 10000, 8);
-    if (datax != START_DEFALTX || datay != START_DEFALTY) { // 扫描到圆
-        // 开始移动
-        result1 = SMOTOR_ANGLE(datax, datay, 11);
-        OLED_ShowSignedNum(3, 4, result1.angle_L, 8);
-        OLED_ShowSignedNum(4, 4, result1.angle_R, 8);
-
-        SMOTOR_CONTROL(SMOTOR_SPEED, result1.angle_B * 200 / 9, SMOTOR_B);
-        while (Get_State(SMOTOR_B)) {}
-        SMOTOR_CONTROL(SMOTOR_SPEED, result1.angle_L * 200 / 9, SMOTOR_L);
-        SMOTOR_CONTROL(SMOTOR_SPEED, result1.angle_R * 200 / 9, SMOTOR_R);
-        while (Get_State(SMOTOR_L | SMOTOR_R)) {}
-        Delay_ms(2000);
-
-        // 移动到了目标地点，再次接收数据
-        // float tdatax = datax;
-        // float tdatay = datay;
-        datax = START_DEFALTX;
-        datay = START_DEFALTY;
-        while (datax == START_DEFALTX && datay == START_DEFALTY) { // 接收数据到扫描到了圆为止
-            datax = getUsartBuf_float(0);
-            datay = getUsartBuf_float(4);
-            OLED_ShowSignedNum(1, 4, datax * 10000, 8);
-            OLED_ShowSignedNum(2, 4, datay * 10000, 8);
-        }
-        // 进行第二次校准
-        result2 = SMOTOR_ANGLE(datax, datay, 11);
-
-        SMOTOR_CONTROL(SMOTOR_SPEED, (result2.angle_B - result1.angle_B) * 200 / 9, SMOTOR_B);
-        while (Get_State(SMOTOR_B)) {}
-        SMOTOR_CONTROL(SMOTOR_SPEED, (result2.angle_L - result1.angle_L) * 200 / 9, SMOTOR_L);
-        SMOTOR_CONTROL(SMOTOR_SPEED, (result2.angle_R - result1.angle_R) * 200 / 9, SMOTOR_R);
-        while (Get_State(SMOTOR_L | SMOTOR_R)) {}
-        OLED_ShowSignedNum(3, 4, result2.angle_L - result1.angle_L, 8);
-        OLED_ShowSignedNum(4, 4, result2.angle_R - result1.angle_R, 8);
-    }
-    for (;;)
-        ;
+    Swing(0);
+    return 0;
 }
 
 // 中断服务函数

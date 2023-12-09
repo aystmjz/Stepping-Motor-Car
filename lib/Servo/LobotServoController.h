@@ -12,6 +12,7 @@
 #include <string.h>
 #include "stm32f10x.h"
 #include "bool.h"
+#include "Usart.h"
 
 
 #define FRAME_HEADER            0x55 // 帧头

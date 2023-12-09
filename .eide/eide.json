@@ -9,8 +9,8 @@
     "lib/Servo"
   ],
   "outDir": "build",
-  "deviceName": "STM32F102C8",
-  "packDir": null,
+  "deviceName": "STM32F103ZE",
+  "packDir": ".pack/Keil/STM32F1xx_DFP.2.3.0",
   "miscInfo": {
     "lastBuildTime": 1608618345249,
     "uid": "5d843c7df687aa3b4d2a61c59e613f14"
@@ -37,12 +37,13 @@
         "hal/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c",
         "hal/STM32F10x_StdPeriph_Driver/src/stm32f10x_rtc.c",
         "hal/STM32F10x_StdPeriph_Driver/src/stm32f10x_sdio.c",
-        "hal/STM32F10x_StdPeriph_Driver/src/stm32f10x_wwdg.c"
+        "hal/STM32F10x_StdPeriph_Driver/src/stm32f10x_wwdg.c",
+        "src/HARDWARE/QR_code1.c"
       ],
       "toolchain": "AC5",
       "compileConfig": {
         "cpuType": "Cortex-M3",
-        "floatingPointHardware": "default",
+        "floatingPointHardware": "none",
         "useCustomScatterFile": false,
         "scatterFilePath": "undefined",
         "storageLayout": {
@@ -52,7 +53,7 @@
               "id": 1,
               "mem": {
                 "startAddr": "0x20000000",
-                "size": "0x2800"
+                "size": "0x10000"
               },
               "isChecked": "1",
               "noInit": false
@@ -63,8 +64,8 @@
               "tag": "IROM",
               "id": 1,
               "mem": {
-                "startAddr": "0x08000000",
-                "size": "0x10000"
+                "startAddr": "0x8000000",
+                "size": "0x80000"
               },
               "isChecked": "1",
               "isStartup": true
@@ -73,12 +74,17 @@
         },
         "options": "null"
       },
-      "uploader": "OpenOCD",
+      "uploader": "JLink",
       "uploadConfig": {
         "bin": "",
-        "target": "stm32f1x",
-        "interface": "cmsis-dap-v1",
-        "baseAddr": "0x08000000"
+        "baseAddr": "0x08000000",
+        "cpuInfo": {
+          "vendor": "ST",
+          "cpuName": "STM32F103ZE"
+        },
+        "proType": 1,
+        "speed": 8000,
+        "otherCmds": ""
       },
       "uploadConfigMap": {
         "JLink": {
@@ -86,7 +92,7 @@
           "baseAddr": "0x08000000",
           "cpuInfo": {
             "vendor": "ST",
-            "cpuName": "STM32F103C6"
+            "cpuName": "STM32F103ZE"
           },
           "proType": 1,
           "speed": 8000,
@@ -98,10 +104,16 @@
           "resetMode": "default",
           "runAfterProgram": true,
           "speed": 4000,
-          "address": "0x08000000",
+          "address": "0x8000000",
           "elFile": "None",
           "optionBytes": ".eide/debug.st.option.bytes.ini",
           "otherCmds": ""
+        },
+        "OpenOCD": {
+          "bin": "",
+          "target": "stm32f1x",
+          "interface": "cmsis-dap-v1",
+          "baseAddr": "0x08000000"
         }
       },
       "custom_dep": {
@@ -115,7 +127,9 @@
         "sourceDirList": [],
         "defineList": [
           "USE_STDPERIPH_DRIVER",
-          "STM32F10X_MD"
+          "WSDC2412D",
+          "S_Spin",
+          "STM32F10X_HD"
         ]
       }
     }

@@ -8,6 +8,12 @@
 #define FrameHeaderData 0x21          // 帧头
 #define FrameTailData 0x41            // 帧尾
 
+#define HEADER_CAMER_CMD 0x45 // 帧头
+#define TAIL_CAMER_CMD   0x46 // 帧尾
+#define MAIN_MODE        0X30 // 主模式
+#define CIRCLE_MODE      0X31 // 寻圆模式
+#define CAMERA_LEN       4
+
 
 void OpenCV_memcpy(void *dest, void *src, int n);
 void OpenCV_Init(void);
@@ -19,30 +25,11 @@ uint8_t getUsartBuf(unsigned char index);
 uint16_t getUsartBuf_16(unsigned char index);
 uint32_t getUsartBuf_32(unsigned char index);
 float getUsartBuf_float(unsigned char index);
+void uart3WriteBuf(uint8_t *buf, uint8_t len);
+void Send_CMD(uint8_t main_mode, uint8_t color);
 
 int8_t Get_Excursion(void);
 uint8_t Get_Condition(void);
 uint8_t Get_Color(void);
-
-#define A_ !A
-#define B_ !B
-#define C_ !C
-#define D_ !D
-#define E_ !E
-#define F_ !F
-
-#define A1_ !A1
-#define B1_ !B1
-#define C1_ !C1
-#define D1_ !D1
-#define E1_ !E1
-#define F1_ !F1
-
-#define A2_ !A2
-#define B2_ !B2
-#define C2_ !C2
-#define D2_ !D2
-#define E2_ !E2
-#define F2_ !F2
 
 #endif

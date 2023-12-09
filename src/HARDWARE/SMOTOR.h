@@ -3,45 +3,51 @@
 
 #include <math.h>
 #include "stm32f10x.h"
-#include "delay.h"
+#include "Delay.h"
 #include "OpenCV.h"
-#include "OlED.h"
+#include "PID.h"
+#include "Servo.h"
+
 #define MOTOR_FULL_STEP      0 // 满步
 #define MOTOR_HALF_STEP      1 // 二分之一步
 #define MOTOR_QUARTER_STEP   2 // 四分之一步
 #define MOTOR_EIGHTH_STEP    3 // 八分之一步
 #define MOTOR_SIXTEENTH_STEP 4 // 十六分之一步
 
-#define TIM2_OCInit          TIM_OC2Init // PA1 1
-#define TIM3_OCInit          TIM_OC4Init // PB1 2
-#define TIM4_OCInit          TIM_OC4Init // PB9 3
+#define TIM2_OCInit          TIM_OC2Init // PB3 1 G15
+#define TIM3_OCInit          TIM_OC1Init // PA6 2 A5
+#define TIM4_OCInit          TIM_OC4Init // PB9 3 B8
 
 #define TIM2_SetCompare      TIM_SetCompare2
-#define TIM3_SetCompare      TIM_SetCompare4
+#define TIM3_SetCompare      TIM_SetCompare1
 #define TIM4_SetCompare      TIM_SetCompare4
 
-#define DIR_GPIO_A           GPIO_Pin_0
-#define DIR_GPIO_B           GPIO_Pin_0 | GPIO_Pin_8;
-#define STEP_GPIO_A          GPIO_Pin_1
-#define STEP_GPIO_B          GPIO_Pin_1 | GPIO_Pin_9;
+#define DIR_GPIO_G           GPIO_Pin_15
+#define DIR_GPIO_A           GPIO_Pin_5
+#define DIR_GPIO_B           GPIO_Pin_8
+
+#define STEP_GPIO_A          GPIO_Pin_6
+#define STEP_GPIO_B          GPIO_Pin_3 | GPIO_Pin_9
 
 #define START_DEFALTX        0
 #define START_DEFALTY        8
 
-typedef enum {
-    Forward  = 1,
-    Backward = 0
-} Direction;
-
-#define SMOTOR_R ((uint8_t)0x01)
-#define SMOTOR_L ((uint8_t)0x02)
-#define SMOTOR_B ((uint8_t)0x08)
+#define SMOTOR_R             ((uint8_t)0x01)
+#define SMOTOR_L             ((uint8_t)0x02)
+#define SMOTOR_B             ((uint8_t)0x08)
+#define ALL_SMOTOR           SMOTOR_R | SMOTOR_L | SMOTOR_B
 
 typedef enum {
     Tim2 = 2,
     Tim3 = 3,
     Tim4 = 4
 } Tim;
+
+typedef enum {
+    Location_L = 1,
+    Location_M = 2,
+    Location_R = 3
+} Location;
 
 typedef struct angles {
     double angle_L;
@@ -53,15 +59,18 @@ typedef struct angles {
 
 } angleTypeDef;
 
-#define SPEED                            80
-#define SMOTOR_SPEED_B                   120
-#define SMOTOR_SPEED_B_MAX               200
+#define SPEED                            100
+#define Lift                             40
+#define SMOTOR_SPEED_B                   130
+#define SMOTOR_SPEED_B_MAX               170
 #define SMOTOR_SPEED_K                   200000
 
-#define K_x                              (105.0 / 160)
-#define K_y                              (105.0 / 160)
+#define K_x                              (120.0 / 160)
+#define K_y                              (120.0 / 160)
 #define Camera_Distance                  155.0
 #define Angle_Grasp                      90.0
+#define Camera_X                         getUsartBuf_float(2)
+#define Camera_Y                         getUsartBuf_float(6)
 
 #define Angle_Clculate(angle_x, angle_y) (Radian_Angle(atan((angle_x) / (angle_y))))
 
@@ -70,8 +79,8 @@ typedef struct angles {
 #define l                                170.0
 #define r                                140.23
 
-#define SMOTOR_L_Init                    34.4
-#define SMOTOR_R_Init                    0
+#define SMOTOR_L_Init                    45 // 34.4
+#define SMOTOR_R_Init                    -3
 #define SMOTOR_B_Init                    0
 
 #define Angle_Radian(angle)              ((angle) * (PI / 180.0))                       // 角度转弧度
@@ -100,23 +109,20 @@ void nvic_config(void);
 void SMOTOR_TIM_Init(void);
 void SMOTOR_Init(void);
 void SET_TIM(Tim Vale, uint16_t ARR, uint16_t CCR);
-void SET_Direction(uint8_t SMOTOR, Direction Dir);
+void SET_Rotation(uint8_t SMOTOR, Rotation Dir);
 void SMOTOR_STOP(uint8_t SMOTOR);
 void SMOTOR_START(uint8_t SMOTOR);
 uint8_t Get_State(uint8_t SMOTOR);
-void SMOTOR_RESET(uint8_t SMOTOR);
+void SMOTOR_RESET(double Long, double Height, double Angleu, int8_t SMOTOR);
 void SMOTOR_CONTROL(uint32_t Spead, int32_t Location, uint8_t SMOTOR);
-void SMOTOR_MOVE(double Long, double Height, double Angle,double Speed);
-void SMOTOR_Delta_MOVE(double Delta_Long, double Delta_Height, double Delta_Angle,double Speed);
-void SMOTOR_XY_MOVE(double Location_X, double Location_Y, double Height,double Speed);
+void SMOTOR_MOVE(double Long, double Height, double Angle, double Speed);
+void SMOTOR_Delta_MOVE(double Delta_Long, double Delta_Height, double Delta_Angle, double Speed);
+void SMOTOR_XY_MOVE(double Location_X, double Location_Y, double Height, double Speed);
 void SMOTOR_ResetLocation(uint8_t SMOTOR);
 void TIM2_IRQHandler(void);
 void TIM3_IRQHandler(void);
 void TIM4_IRQHandler(void);
-angleTypeDef SMOTOR_ANGLE(double Long, double Height, double Angle);
-void CAMERA_ANGLE(double Camera_x, double Camera_y,double Speed);
-void CAMERA_ANGLE_(double Camera_x, double Camera_y, double Distance, double Height);
-void smotor_calibrate(void);
-void smotor_grasp_obj(void);
+angleTypeDef SMOTOR_ANGLE(double Long, double Height, double Angle, double Speed);
+uint8_t SMOTOR_CAMERA_MOVE(uint8_t Times, uint16_t Delay, double Speed);
 
 #endif

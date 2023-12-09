@@ -1,5 +1,26 @@
 #include "OpenCV.h"
 
+#define A_ !A
+#define B_ !B
+#define C_ !C
+#define D_ !D
+#define E_ !E
+#define F_ !F
+
+#define A1_ !A1
+#define B1_ !B1
+#define C1_ !C1
+#define D1_ !D1
+#define E1_ !E1
+#define F1_ !F1
+
+#define A2_ !A2
+#define B2_ !B2
+#define C2_ !C2
+#define D2_ !D2
+#define E2_ !E2
+#define F2_ !F2
+
 uint8_t Serial3_RxData;
 uint8_t Serial3_RxFlag;
 static uint8_t databuf[ReceivedArrLength]; // 接收数组，用来存储OpenCV传递过来的数据
@@ -144,6 +165,31 @@ uint8_t Usart3SerialGetRxData(void)
     Serial3_RxData = USART_ReceiveData(USART3);
     return Serial3_RxData;
 }
+
+void uart3WriteBuf(uint8_t *buf, uint8_t len)
+{
+    while (len--) {
+        while ((USART3->SR & 0x40) == 0)
+            ;
+        USART_SendData(USART3, *buf++);
+    }
+}
+
+/// @brief 向树莓派发送命令
+/// @param main_mode 模式
+/// @param color 颜色
+void Send_CMD(uint8_t main_mode, uint8_t color)
+{
+    uint8_t outbuf[CAMERA_LEN] = {HEADER_CAMER_CMD,MAIN_MODE,0x30,TAIL_CAMER_CMD};
+
+    outbuf[1] = main_mode;
+    outbuf[2] = color+0x30;
+
+    for (int i = 0; i < CAMERA_LEN; i++) {
+        uart3WriteBuf(&outbuf[i],1);
+    }
+}
+
 
 // void DataTest()
 // {
