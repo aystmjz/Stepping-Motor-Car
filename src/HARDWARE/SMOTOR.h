@@ -8,6 +8,7 @@
 #include "PID.h"
 #include "Servo.h"
 #include "Buzzer.h"
+#include "LightSensor.h"
 
 #define MOTOR_FULL_STEP      0 // 满步
 #define MOTOR_HALF_STEP      1 // 二分之一步
@@ -67,15 +68,20 @@ typedef struct Camera {
 
 } CameraTypeDef;
 
-#define SPEED                            110//110
-#define Lift                             200//70
-#define SPEED_B                          250//180
+#define SPEED                            110 // 110
+#define Lift_H                           200 // 70
+#define Lift_M                           150 // 70
+#define Lift_L                           100 // 70
+#define Spin_H                           350
+#define Spin_M                           200
+#define Spin_L                           100
+#define SPEED_B                          250 // 180
 #define SPEED_B_MAX                      300
 #define SMOTOR_SPEED_K                   200000
 
-#define K_x                              (120.0 / 160)
-#define K_y                              (120.0 / 160)
-#define Camera_Distance                  155.0
+#define K_x                              (80.0 / 160)
+#define K_y                              (80.0 / 160)
+#define Camera_Distance                  160.0
 #define Angle_Grasp                      90.0
 #define Camera_X                         getUsartBuf_float(2)
 #define Camera_Y                         getUsartBuf_float(6)
@@ -125,9 +131,11 @@ void SMOTOR_RESET(double Long, double Height, double Angleu, int8_t SMOTOR);
 void SMOTOR_Adjust(double Angle);
 void SMOTOR_CONTROL(uint32_t Spead, int32_t Location, uint8_t SMOTOR);
 void SMOTOR_MOVE(double Long, double Height, double Angle, double Speed);
+void SMOTOR_Angle_Adjust(double Angle, double Speed);
 void SMOTOR_Delta_MOVE(double Delta_Long, double Delta_Height, double Delta_Angle, double Speed);
 void SMOTOR_XY_MOVE(double Location_X, double Location_Y, double Height, double Speed);
-void SMOTOR_CONTROL_MOVE(double Location,double Speed,  double Spead_MAX, uint8_t SMOTOR);
+void SMOTOR_PID_MOVE(double Long, double Height, double Angle, double Speed);
+void SMOTOR_CONTROL_MOVE(double Location, double Speed, double Spead_MAX, uint8_t SMOTOR);
 void SMOTOR_ResetLocation(uint8_t SMOTOR);
 void TIM2_IRQHandler(void);
 void TIM3_IRQHandler(void);

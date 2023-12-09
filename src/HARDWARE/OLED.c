@@ -3,8 +3,8 @@
 #include "Delay.h"
 
 /*引脚配置*/
-#define OLED_W_SDA(x)		do{GPIO_WriteBit(GPIOC, GPIO_Pin_10, (BitAction)(x));OLED_I2C_Delay();}while (0)
-#define OLED_W_SCL(x)		do{GPIO_WriteBit(GPIOA, GPIO_Pin_15, (BitAction)(x));OLED_I2C_Delay();}while (0)
+#define OLED_W_SDA(x)		do{GPIO_WriteBit(GPIOA, GPIO_Pin_10, (BitAction)(x));OLED_I2C_Delay();}while (0)
+#define OLED_W_SCL(x)		do{GPIO_WriteBit(GPIOA, GPIO_Pin_9, (BitAction)(x));OLED_I2C_Delay();}while (0)
 
 
 void OLED_I2C_Delay(void)
@@ -16,13 +16,13 @@ void OLED_I2C_Delay(void)
 void OLED_I2C_Init(void)
 {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
+	//RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
 	GPIO_InitTypeDef GPIO_InitStructure;
  	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
- 	GPIO_Init(GPIOC, &GPIO_InitStructure);
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_15;
+	//GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+ 	//GPIO_Init(GPIOC, &GPIO_InitStructure);
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9|GPIO_Pin_10;
  	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
 	OLED_W_SCL(1);

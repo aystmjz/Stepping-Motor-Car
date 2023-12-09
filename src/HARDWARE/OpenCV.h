@@ -3,6 +3,7 @@
 
 #include "stm32f10x.h"
 #include "Usart.h"
+#include "HWT101CT.h"
 
 #define ReceivedArrLength 11          // 接收数组的长度
 #define FrameHeaderData 0x21          // 帧头
@@ -28,7 +29,7 @@ float getUsartBuf_float(unsigned char index);
 void uart3WriteBuf(uint8_t *buf, uint8_t len);
 void Send_CMD(uint8_t main_mode, uint8_t color);
 
-int16_t Get_Excursion(void);
+int32_t Get_Excursion(void);
 uint8_t Get_Condition(void);
 uint8_t Get_Color(void);
 

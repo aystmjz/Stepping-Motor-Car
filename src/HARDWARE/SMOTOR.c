@@ -272,10 +272,10 @@ void SMOTOR_CONTROL(uint32_t Spead, int32_t Location, uint8_t SMOTOR)
     if (Spead <= 10) return;
     switch (SMOTOR) {
         case SMOTOR_L:
-            if (!SMOTOR_L_flag) {
+            Error = Location - SMOTOR_L_Location;
+            if (!SMOTOR_L_flag && Error) {
                 SMOTOR_L_flag     = 1;
                 SMOTOR_L_step     = 0;
-                Error             = Location - SMOTOR_L_Location;
                 SMOTOR_L_Location = Location;
                 if (Error < 0) {
                     Error = -Error;
@@ -288,10 +288,10 @@ void SMOTOR_CONTROL(uint32_t Spead, int32_t Location, uint8_t SMOTOR)
             }
             break;
         case SMOTOR_R:
-            if (!SMOTOR_R_flag) {
+            Error = Location - SMOTOR_R_Location;
+            if (!SMOTOR_R_flag && Error) {
                 SMOTOR_R_flag     = 1;
                 SMOTOR_R_step     = 0;
-                Error             = Location - SMOTOR_R_Location;
                 SMOTOR_R_Location = Location;
                 if (Error < 0) {
                     Error = -Error;
@@ -304,10 +304,10 @@ void SMOTOR_CONTROL(uint32_t Spead, int32_t Location, uint8_t SMOTOR)
             }
             break;
         case SMOTOR_B:
-            if (!SMOTOR_B_flag) {
+            Error = Location - SMOTOR_B_Location;
+            if (!SMOTOR_B_flag && Error) {
                 SMOTOR_B_flag     = 1;
                 SMOTOR_B_step     = 0;
-                Error             = Location - SMOTOR_B_Location;
                 SMOTOR_B_Location = Location;
                 if (Error < 0) {
                     Error = -Error;
@@ -321,7 +321,7 @@ void SMOTOR_CONTROL(uint32_t Spead, int32_t Location, uint8_t SMOTOR)
             break;
     }
 }
-#define Long_MAX 290
+#define Long_MAX 270
 #define Long_MIN 120
 /// @brief 移动步进电机到指定位置
 /// @param Long 机械臂伸出长度
@@ -346,6 +346,123 @@ void SMOTOR_MOVE(double Long, double Height, double Angle, double Speed)
     SMOTOR_CONTROL(result.speed_R, result.angle_R * 200 / 9, SMOTOR_R);
     SMOTOR_CONTROL(result.speed_B, result.angle_B * 200 / 9, SMOTOR_B);
     while (Get_State(SMOTOR_L | SMOTOR_R | SMOTOR_B)) {}
+}
+
+#define Adjust_Slow_Step_K    0.008
+#define Adjust_Slow_Step      30
+#define Adjust_Slow_Speed_K   1.09
+#define Adjust_Slow_Speed     45
+#define Adjust_Delta_Location 500
+extern uint8_t Sensor_Spin_Flag;
+extern uint8_t Buzzer_Flag;
+
+void SMOTOR_Angle_Adjust(double Angle, double Speed)
+{
+    uint8_t Adjust_Flag       = 0;
+    uint8_t Adjust_Delta_Flag = 0;
+    double Adjust_Error       = 0;
+    if (Angle == 0) Adjust_Delta_Flag = 1;
+    if (SMOTOR_Angle < 0 && Angle > 0)
+        Adjust_Flag = 1;
+    else if (SMOTOR_Angle > 0 && Angle < 0)
+        Adjust_Flag = 2;
+    angleTypeDef result     = SMOTOR_ANGLE(SMOTOR_Long, SMOTOR_Height, Angle, Speed);
+    double SMOTOR_SPEED_B   = SMOTOR_SPEED_K / Adjust_Slow_Speed;
+    double Location_Delta_B = result.angle_B * 200 / 9.0 - SMOTOR_B_Location;
+    double Location_B       = SMOTOR_B_Location;
+    double Slow_Step        = Adjust_Slow_Step * 2;
+    double Location_Delta_M = result.angle_B * 200 / 9.0 - SMOTOR_B_Location - (result.angle_B * 200 / 9.0 - SMOTOR_B_Location) * Adjust_Slow_Step_K * Adjust_Slow_Step * 2;
+    for (uint8_t i = 1; i <= Adjust_Slow_Step; i++) {
+        Slow_Step--;
+        if (i != 1) SMOTOR_SPEED_B /= Adjust_Slow_Speed_K;
+        Location_B += Location_Delta_B * Adjust_Slow_Step_K;
+
+        SMOTOR_CONTROL_MOVE(Location_B, SMOTOR_SPEED_B, Speed, SMOTOR_B);
+
+        if (Adjust_Flag) {
+            while (LightSensor_Spin() && Get_State(SMOTOR_B)) {}
+            if (Get_State(SMOTOR_B)) {
+                Adjust_Error = SMOTOR_B_step;
+                if (Adjust_Flag == 2) {
+                    Adjust_Error = -Adjust_Error;
+                }
+                Location_Delta_B = (result.angle_B * 200 / 9.0 - Location_Delta_M) / (Adjust_Slow_Step_K * Slow_Step);
+                Adjust_Flag      = 0;
+                Buzzer_Flag      = 1;
+                SMOTOR_Adjust(0);
+                Location_B = Location_Delta_B * Adjust_Slow_Step_K - Adjust_Error;
+                SMOTOR_CONTROL_MOVE(Location_B, SMOTOR_SPEED_B, Speed, SMOTOR_B);
+                while (Get_State(SMOTOR_B)) {};
+            }
+
+        } else
+            while (Get_State(SMOTOR_B)) {};
+    }
+
+    Location_B += Location_Delta_M;
+    SMOTOR_CONTROL_MOVE(Location_B, SMOTOR_SPEED_B, Speed, SMOTOR_B);
+    if (Adjust_Flag) {
+        while (LightSensor_Spin() && Get_State(SMOTOR_B)) {}
+        if (Get_State(SMOTOR_B)) {
+            Adjust_Error = SMOTOR_B_step;
+            if (Adjust_Flag == 2) {
+                Adjust_Error = -Adjust_Error;
+            }
+            Location_Delta_B = (result.angle_B * 200 / 9.0 - (Location_Delta_M - Adjust_Error)) / (Adjust_Slow_Step_K * Slow_Step);
+            Adjust_Flag      = 0;
+            Buzzer_Flag      = 1;
+            SMOTOR_Adjust(0);
+            Location_B = Location_Delta_M - Adjust_Error;
+            SMOTOR_CONTROL_MOVE(Location_B, SMOTOR_SPEED_B, Speed, SMOTOR_B);
+            while (Get_State(SMOTOR_B)) {};
+        }
+
+    } else
+        while (Get_State(SMOTOR_B)) {};
+
+    for (uint8_t i = 1; i <= Adjust_Slow_Step - 1; i++) {
+        Slow_Step--;
+        SMOTOR_SPEED_B *= Adjust_Slow_Speed_K;
+        Location_B += Location_Delta_B * Adjust_Slow_Step_K;
+        if (SMOTOR_SPEED_B < SMOTOR_SPEED_K / Speed)
+            SMOTOR_CONTROL(SMOTOR_SPEED_K / Speed, Location_B, SMOTOR_B);
+        else
+            SMOTOR_CONTROL(SMOTOR_SPEED_B, Location_B, SMOTOR_B);
+        if (Adjust_Flag) {
+            while (LightSensor_Spin() && Get_State(SMOTOR_B)) {}
+            if (Get_State(SMOTOR_B)) {
+                Adjust_Error = SMOTOR_B_step;
+                if (Adjust_Flag == 2) {
+                    Adjust_Error = -Adjust_Error;
+                }
+                Location_Delta_B = (result.angle_B * 200 / 9.0) / (Adjust_Slow_Step_K * Slow_Step);
+                Adjust_Flag      = 0;
+                Buzzer_Flag      = 1;
+                SMOTOR_Adjust(0);
+                Location_B = Location_Delta_B * Adjust_Slow_Step_K - Adjust_Error;
+                SMOTOR_CONTROL_MOVE(Location_B, SMOTOR_SPEED_B, Speed, SMOTOR_B);
+                while (Get_State(SMOTOR_B)) {};
+            }
+        } else
+            while (Get_State(SMOTOR_B)) {
+                if (!LightSensor_Spin() && Adjust_Delta_Flag) {
+                    Buzzer_Flag = 1;
+                    SMOTOR_Adjust(0);
+                    return;
+                }
+            };
+    }
+    if (Adjust_Delta_Flag) {
+        SMOTOR_CONTROL(SMOTOR_SPEED_B, result.angle_B * 200 / 9 - Adjust_Delta_Location, SMOTOR_B);
+        while (LightSensor_Spin() && Get_State(SMOTOR_B)) {}
+        if (Get_State(SMOTOR_B)) {
+            Buzzer_Flag = 1;
+            SMOTOR_Adjust(0);
+        }
+    } else {
+        SMOTOR_CONTROL(SMOTOR_SPEED_B, result.angle_B * 200 / 9, SMOTOR_B);
+        while (Get_State(SMOTOR_B)) {};
+    }
 }
 
 /// @brief 移动步进电机到相对位置
@@ -374,9 +491,80 @@ void SMOTOR_XY_MOVE(double Location_X, double Location_Y, double Height, double 
     Long  = sqrt(Location_Y * Location_Y + Location_X * Location_X);
     Angle -= Angle_Clculate(Location_X, Location_Y);
     Long -= Camera_Distance;
-    SMOTOR_MOVE(Long, Height, Angle, Speed);
+    SMOTOR_PID_MOVE(Long, Height, Angle, Speed);
 }
-void SMOTOR_CONTROL_MOVE(double Location,double Speed,  double Spead_MAX, uint8_t SMOTOR)
+
+// #define Slow_Step_K  0.04
+// #define Slow_Step    10
+// #define Slow_Speed_K 1.2
+// #define Slow_Speed   40
+#define Slow_Error   5
+
+#define Slow_Step_K  0.008
+#define Slow_Step    30
+#define Slow_Speed_K 1.1
+#define Slow_Speed   20
+
+void SMOTOR_PID_MOVE(double Long, double Height, double Angle, double Speed)
+{
+    angleTypeDef result     = SMOTOR_ANGLE(Long, Height, Angle, Speed);
+    double SMOTOR_SPEED_R   = SMOTOR_SPEED_K / Slow_Speed;
+    double SMOTOR_SPEED_L   = SMOTOR_SPEED_K / Slow_Speed;
+    double SMOTOR_SPEED_B   = SMOTOR_SPEED_K / Slow_Speed;
+    double Location_Delta_R = result.angle_R * 200 / 9.0 - SMOTOR_R_Location;
+    double Location_Delta_L = result.angle_L * 200 / 9.0 - SMOTOR_L_Location;
+    double Location_Delta_B = result.angle_B * 200 / 9.0 - SMOTOR_B_Location;
+    if (Location_Delta_R < Slow_Error && Location_Delta_R > -Slow_Error) Location_Delta_R = 0;
+    if (Location_Delta_L < Slow_Error && Location_Delta_L > -Slow_Error) Location_Delta_L = 0;
+    if (Location_Delta_B < Slow_Error && Location_Delta_B > -Slow_Error) Location_Delta_B = 0;
+    double Location_R         = SMOTOR_R_Location;
+    double Location_L         = SMOTOR_L_Location;
+    double Location_B         = SMOTOR_B_Location;
+    double Location_Delta_R_M = Location_Delta_R * (1 - Slow_Step_K * Slow_Step * 2);
+    double Location_Delta_L_M = Location_Delta_L * (1 - Slow_Step_K * Slow_Step * 2);
+    double Location_Delta_B_M = Location_Delta_B * (1 - Slow_Step_K * Slow_Step * 2);
+
+    for (uint8_t i = 1; i <= Slow_Step; i++) {
+        if (i != 1) {
+            SMOTOR_SPEED_R /= Slow_Speed_K;
+            SMOTOR_SPEED_L /= Slow_Speed_K;
+            SMOTOR_SPEED_B /= Slow_Speed_K;
+        }
+        Location_R += Location_Delta_R * Slow_Step_K;
+        Location_L += Location_Delta_L * Slow_Step_K;
+        Location_B += Location_Delta_B * Slow_Step_K;
+        SMOTOR_CONTROL_MOVE(Location_R, SMOTOR_SPEED_R, SMOTOR_SPEED_K / result.speed_R, SMOTOR_R);
+        SMOTOR_CONTROL_MOVE(Location_L, SMOTOR_SPEED_L, SMOTOR_SPEED_K / result.speed_L, SMOTOR_L);
+        SMOTOR_CONTROL_MOVE(Location_B, SMOTOR_SPEED_B, SMOTOR_SPEED_K / result.speed_B, SMOTOR_B);
+        while (Get_State(SMOTOR_L | SMOTOR_R | SMOTOR_B)) {};
+    }
+    Location_R += Location_Delta_R_M;
+    Location_L += Location_Delta_L_M;
+    Location_B += Location_Delta_B_M;
+    SMOTOR_CONTROL_MOVE(Location_R, SMOTOR_SPEED_R, SMOTOR_SPEED_K / result.speed_R, SMOTOR_R);
+    SMOTOR_CONTROL_MOVE(Location_L, SMOTOR_SPEED_L, SMOTOR_SPEED_K / result.speed_L, SMOTOR_L);
+    SMOTOR_CONTROL_MOVE(Location_B, SMOTOR_SPEED_B, SMOTOR_SPEED_K / result.speed_B, SMOTOR_B);
+    while (Get_State(SMOTOR_L | SMOTOR_R | SMOTOR_B)) {};
+
+    for (uint8_t i = 1; i <= Slow_Step - 1; i++) {
+        SMOTOR_SPEED_R *= Slow_Speed_K;
+        SMOTOR_SPEED_L *= Slow_Speed_K;
+        SMOTOR_SPEED_B *= Slow_Speed_K;
+        Location_R += Location_Delta_R * Slow_Step_K;
+        Location_L += Location_Delta_L * Slow_Step_K;
+        Location_B += Location_Delta_B * Slow_Step_K;
+        SMOTOR_CONTROL_MOVE(Location_R, SMOTOR_SPEED_R, SMOTOR_SPEED_K / result.speed_R, SMOTOR_R);
+        SMOTOR_CONTROL_MOVE(Location_L, SMOTOR_SPEED_L, SMOTOR_SPEED_K / result.speed_L, SMOTOR_L);
+        SMOTOR_CONTROL_MOVE(Location_B, SMOTOR_SPEED_B, SMOTOR_SPEED_K / result.speed_B, SMOTOR_B);
+        while (Get_State(SMOTOR_L | SMOTOR_R | SMOTOR_B)) {};
+    }
+    SMOTOR_CONTROL(SMOTOR_SPEED_R, result.angle_R * 200 / 9, SMOTOR_R);
+    SMOTOR_CONTROL(SMOTOR_SPEED_L, result.angle_L * 200 / 9, SMOTOR_L);
+    SMOTOR_CONTROL(SMOTOR_SPEED_B, result.angle_B * 200 / 9, SMOTOR_B);
+    while (Get_State(SMOTOR_L | SMOTOR_R | SMOTOR_B)) {};
+}
+
+void SMOTOR_CONTROL_MOVE(double Location, double Speed, double Spead_MAX, uint8_t SMOTOR)
 {
     if (Speed < SMOTOR_SPEED_K / Spead_MAX)
         SMOTOR_CONTROL(SMOTOR_SPEED_K / Spead_MAX, Location, SMOTOR);
@@ -431,6 +619,17 @@ void SMOTOR_ResetLocation(uint8_t SMOTOR)
 /// @return 角度计算结果
 angleTypeDef SMOTOR_ANGLE(double Long, double Height, double Angle, double Speed)
 {
+    if (Long > Long_MAX || Long < Long_MIN) {
+        Buzzer_ON();
+        Buzzer_Debug = 1;
+        Delay_ms(100);
+        Buzzer_OFF();
+        Buzzer_Debug = 0;
+        if (Long > Long_MAX)
+            Long = Long_MAX;
+        else
+            Long = Long_MIN;
+    }
     angleTypeDef angle;
     double Angle_L, Angle_R;
     double Delta_Angle_max, Delta_Angle_min, Delta_Angle_B;
@@ -485,10 +684,13 @@ angleTypeDef SMOTOR_ANGLE(double Long, double Height, double Angle, double Speed
     SMOTOR_L_Angle = angle.angle_L;
     SMOTOR_R_Angle = angle.angle_R;
     SMOTOR_B_Angle = angle.angle_B;
-    Delay_ms(100);
     return angle;
 }
 
+#define Camera_x_min 5
+#define Camera_y_min 5
+#define Speed_MAX    40
+#define Speed_K      10
 /// @brief 摄像头调整
 /// @param Camera_x 摄像头识别x坐标
 /// @param Camera_y 摄像头识别y坐标
@@ -499,16 +701,21 @@ angleTypeDef SMOTOR_ANGLE(double Long, double Height, double Angle, double Speed
 CameraTypeDef SMOTOR_CAMERA_MOVE(uint8_t Times, uint16_t Delay, double Speed)
 {
     CameraTypeDef Camera;
-    double Camera_x, Camera_y, Long, Angle;
+    double Camera_x, Camera_y, Long, Angle, Camera_Delta_x, Camera_Delta_y;
     Long                = SMOTOR_Long;
     Angle               = SMOTOR_Angle;
     double Try_Long[4]  = {Long + 20, Long + 40, Long + 20, Long + 40};
-    double Try_Angle[4] = {Angle + 40, Angle + 50, Angle - 40, Angle - 50};
-    uint16_t Time_Out   = 2000;
+    double Try_Angle[4] = {Angle + 15, Angle + 30, Angle - 15, Angle - 30};
+    uint16_t Time_Out   = 500;
     if (Camera_X == 255 || Camera_Y == 255) {
         for (uint8_t i = 0; i < 4; i++) {
-            Time_Out = 2000;
-            SMOTOR_MOVE(Try_Long[i], SMOTOR_Height, Try_Angle[i], SPEED);
+            Time_Out = 500;
+            SMOTOR_PID_MOVE(Try_Long[i], SMOTOR_Height, SMOTOR_Angle, 40);
+            if (i == 2)
+                SMOTOR_Angle_Adjust(Try_Angle[i], SPEED_B);
+            else
+                SMOTOR_Angle_Adjust(Try_Angle[i], 100);
+            // SMOTOR_MOVE(Try_Long[i], SMOTOR_Height, Try_Angle[i], SPEED);
             Delay_ms(100);
             while (Time_Out && (Camera_X == 255 || Camera_Y == 255)) {
                 Delay_ms(1);
@@ -523,11 +730,20 @@ CameraTypeDef SMOTOR_CAMERA_MOVE(uint8_t Times, uint16_t Delay, double Speed)
         Camera.Long   = 0;
         return Camera;
     }
+    Speed    = 20;
     for (uint8_t i = 0; i < Times; i++) {
         if (i) Delay_ms(Delay);
+        // if (Camera_X <= Camera_x_min && Camera_X >= -Camera_x_min && Camera_Y <= Camera_y_min && Camera_Y >= -Camera_y_min) break;
+        // Camera_Delta_x = Camera_x - Camera_X * K_x;
+        // Camera_Delta_y = Camera_y - Camera_Y * K_y;
+        // if (Camera_Delta_x < 0) Camera_Delta_x = -Camera_Delta_x;
+        // if (Camera_Delta_y < 0) Camera_Delta_y = -Camera_Delta_y;
+        // Speed = (Camera_Delta_x + Camera_Delta_y) / 2;
+        // if (Speed > Speed_MAX ) Speed = Speed_MAX;
+        // if (Speed < 50 ) Speed = 50;
         Camera_x = Camera_X * K_x;
         Camera_y = Camera_Y * K_y;
-        if (!(Camera_X == 255 || Camera_Y == 255)) SMOTOR_XY_MOVE(Camera_x, SMOTOR_Long + Camera_Distance + Camera_y, SMOTOR_Height, Speed -= 10);
+        if (!(Camera_X == 255 || Camera_Y == 255)) SMOTOR_XY_MOVE(Camera_x, SMOTOR_Long + Camera_Distance + Camera_y, SMOTOR_Height, Speed-=3);
     }
     Camera.Angle  = SMOTOR_Angle;
     Camera.Height = SMOTOR_Height;

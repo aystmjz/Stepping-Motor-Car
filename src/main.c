@@ -10,6 +10,7 @@
 #include "LightSensor.h"
 #include "Buzzer.h"
 #include "Nixie.h"
+#include "HWT101CT.h"
 
 PID PID_L, PID_R;
 extern int16_t MOTOR_LeftSpead, MOTOR_RightSpead;
@@ -20,15 +21,16 @@ uint8_t Buzzer_Flag      = 0;
 uint8_t Buzzer_Debug     = 0;
 uint8_t Sensor_Spin_Flag = 0;
 uint8_t Sensor_Lift_Flag = 0;
-#define Buzzer_Delay  100
+#define Buzzer_Delay  50
 
 #define Data(x)       getUsartBuf((x))
 
-#define E             -(Get_Excursion() / 9)
-#define E_            (Get_Excursion() / 9)
+#define E             -(Get_Excursion())
+#define E_            (Get_Excursion())
 #define D             Get_Condition()
 #define C             Get_Color()
 #define S             getUsartBuf(0)
+
 
 #define _Distance     7000
 
@@ -41,6 +43,11 @@ uint8_t Sensor_Lift_Flag = 0;
 #define DELAY_TIME    100 // 200
 
 #define MOTOR_X(x)    MOTOR_X_(x)
+
+void Buzzer_One()
+{
+    Buzzer_Flag = 1;
+}
 
 void Display()
 {
@@ -58,7 +65,7 @@ void Display()
     OLED_ShowNum(4, 14, Last_Two, 1);
     OLED_ShowNum(4, 16, Last_Three, 1);
 }
-void Display_()
+void Display__()
 {
     OLED_ShowSignedNum(2, 1, PID_L.e_l, 5);
     OLED_ShowSignedNum(2, 9, PID_R.e_l, 5);
@@ -73,6 +80,13 @@ void Display_()
     OLED_ShowNum(1, 3, Data(2), 2);
     OLED_ShowSignedNum(1, 5, E, 1);
     OLED_ShowSignedNum(1, 7, E_, 1);
+}
+
+void Display_()
+{
+
+    OLED_ShowSignedNum(1, 1, HWT_getAngle(), 4);
+    OLED_ShowSignedNum(1, 6, HWT_getAngleSpeed(), 4);
 }
 
 void Go_Spot(int32_t Distance)
@@ -140,153 +154,36 @@ void Buzzer_Tow(uint16_t Time)
     Buzzer_Debug = 0;
 }
 
-#define Adjust_Slow_Step_K  0.008
-#define Adjust_Slow_Step    30
-#define Adjust_Slow_Speed_K 1.09
-#define Adjust_Slow_Speed   45
-extern int32_t SMOTOR_B_Location;
-extern double SMOTOR_B_Angle;
-extern uint32_t SMOTOR_B_target, SMOTOR_B_step;
-
-void SMOTOR_Angle_Adjust(double Angle, double Speed)
-{
-    int8_t Adjust_Flag  = 0;
-    double Adjust_Error = 0;
-    if ((SMOTOR_Angle < 0 && Angle > 0))
-        Adjust_Flag = 1;
-    else if ((SMOTOR_Angle > 0 && Angle < 0))
-        Adjust_Flag = 2;
-    angleTypeDef result     = SMOTOR_ANGLE(SMOTOR_Long, SMOTOR_Height, Angle, Speed);
-    double SMOTOR_SPEED_B   = SMOTOR_SPEED_K / Adjust_Slow_Speed;
-    double Location_Delta_B = result.angle_B * 200 / 9.0 - SMOTOR_B_Location;
-    double Location_B       = SMOTOR_B_Location;
-    double Slow_Step        = Adjust_Slow_Step * 2;
-    double Location_Delta_M = result.angle_B * 200 / 9.0 - SMOTOR_B_Location - (result.angle_B * 200 / 9.0 - SMOTOR_B_Location) * Adjust_Slow_Step_K * Adjust_Slow_Step * 2;
-    for (uint8_t i = 1; i <= Adjust_Slow_Step; i++) {
-        Slow_Step--;
-        if (i != 1) SMOTOR_SPEED_B /= Adjust_Slow_Speed_K;
-        Location_B += Location_Delta_B * Adjust_Slow_Step_K;
-
-        SMOTOR_CONTROL_MOVE(Location_B, SMOTOR_SPEED_B, Speed, SMOTOR_B);
-
-        if (Adjust_Flag) {
-            while (LightSensor_Spin() && Get_State(SMOTOR_B)) {}
-            if (Get_State(SMOTOR_B)) {
-                Adjust_Error = SMOTOR_B_step;
-                if (Adjust_Flag == 2) {
-                    Adjust_Error = -Adjust_Error;
-                }
-                Location_Delta_B = (result.angle_B * 200 / 9.0 - Location_Delta_M) / (Adjust_Slow_Step_K * Slow_Step);
-                Adjust_Flag      = 0;
-                Sensor_Spin_Flag = 1;
-                Buzzer_ON();
-                SMOTOR_Adjust(0);
-                SMOTOR_CONTROL_MOVE(Location_B, SMOTOR_SPEED_B, Speed, SMOTOR_B);
-                Location_B = Location_Delta_B * Adjust_Slow_Step_K - Adjust_Error;
-                while (Get_State(SMOTOR_B)) {};
-            }
-
-        } else
-            while (Get_State(SMOTOR_B)) {};
-    }
-
-    Location_B += Location_Delta_M;
-    if (SMOTOR_SPEED_B < SMOTOR_SPEED_K / Speed)
-        SMOTOR_CONTROL(SMOTOR_SPEED_K / Speed, Location_B, SMOTOR_B);
-    else
-        SMOTOR_CONTROL(SMOTOR_SPEED_B, Location_B, SMOTOR_B);
-    if (Adjust_Flag) {
-        while (LightSensor_Spin() && Get_State(SMOTOR_B)) {}
-        if (Get_State(SMOTOR_B)) {
-            Adjust_Error = SMOTOR_B_step;
-            if (Adjust_Flag == 2) {
-                Adjust_Error = -Adjust_Error;
-            }
-            Location_Delta_B = (result.angle_B * 200 / 9.0 - (Location_Delta_M - Adjust_Error)) / (Adjust_Slow_Step_K * Slow_Step);
-            Adjust_Flag      = 0;
-            Sensor_Spin_Flag = 1;
-            Buzzer_ON();
-            SMOTOR_Adjust(0);
-            SMOTOR_CONTROL_MOVE(Location_B, SMOTOR_SPEED_B, Speed, SMOTOR_B);
-            Location_B = Location_Delta_M - Adjust_Error;
-            while (Get_State(SMOTOR_B)) {};
-        }
-
-    } else
-        while (Get_State(SMOTOR_B)) {};
-
-    for (uint8_t i = 1; i <= Adjust_Slow_Step - 1; i++) {
-        Slow_Step--;
-        SMOTOR_SPEED_B *= Adjust_Slow_Speed_K;
-        Location_B += Location_Delta_B * Adjust_Slow_Step_K;
-        if (SMOTOR_SPEED_B < SMOTOR_SPEED_K / Speed)
-            SMOTOR_CONTROL(SMOTOR_SPEED_K / Speed, Location_B, SMOTOR_B);
-        else
-            SMOTOR_CONTROL(SMOTOR_SPEED_B, Location_B, SMOTOR_B);
-        if (Adjust_Flag) {
-            while (LightSensor_Spin() && Get_State(SMOTOR_B)) {}
-            if (Get_State(SMOTOR_B)) {
-                Adjust_Error = SMOTOR_B_step;
-                if (Adjust_Flag == 2) {
-                    Adjust_Error = -Adjust_Error;
-                }
-                Location_Delta_B = (result.angle_B * 200 / 9.0) / (Adjust_Slow_Step_K * Slow_Step);
-                Adjust_Flag      = 0;
-                Sensor_Spin_Flag = 1;
-                Buzzer_ON();
-                SMOTOR_Adjust(0);
-                SMOTOR_CONTROL_MOVE(Location_B, SMOTOR_SPEED_B, Speed, SMOTOR_B);
-                Location_B = Location_Delta_B * Adjust_Slow_Step_K - Adjust_Error;
-                while (Get_State(SMOTOR_B)) {};
-            }
-        } else
-            while (Get_State(SMOTOR_B)) {};
-    }
-    SMOTOR_CONTROL(SMOTOR_SPEED_B, result.angle_B * 200 / 9, SMOTOR_B);
-    while (Get_State(SMOTOR_B)) {};
-    Sensor_Spin_Flag = 0;
-}
-
-#define Suspend_Delta_R      50
-#define Suspend_Delta_L      -10
+#define Suspend_Long         200
+#define Suspend_Height       90
+#define Suspend_Delta_R      15 // 40
+#define Suspend_Delta_L      -5 //-10
 #define Suspend_Slow_Step_K  0.01
 #define Suspend_Slow_Step    30
 #define Suspend_Slow_Speed_K 1.09
 #define Suspend_Slow_Speed   30 // 45
+#define Adjust               1
+#define NO_Adjust            0
 extern int32_t SMOTOR_R_Location;
 extern int32_t SMOTOR_L_Location;
-
-#define Suspend_Long   200 // 160
-#define Suspend_Height 90
 // #define Suspend_Delta_L   0.1 // 0.4
 // #define Suspend_Delta_L_K 1
 // #define Suspend_Delta_R   4 // 4
 /// @brief 移动到悬浮位置
 /// @param Angle
 /// @param Speed
-void SMOTOR_MOVE_Suspend(double Angle, double Speed)
+void SMOTOR_MOVE_Suspend(double Speed, double Adjust_Flag)
 {
-    // angleTypeDef result;
-    // Sensor_Lift_Flag = 1;
-    // result           = SMOTOR_ANGLE(Suspend_Long, Suspend_Height, Angle, Speed);
-    // SMOTOR_CONTROL(result.speed_L * Suspend_Delta_L_K, (result.angle_L - Suspend_Delta_L) * 200 / 9, SMOTOR_L);
-    // SMOTOR_CONTROL(result.speed_R, (result.angle_R + Suspend_Delta_R) * 200 / 9, SMOTOR_R);
-    // SMOTOR_CONTROL(result.speed_B, result.angle_B * 200 / 9, SMOTOR_B);
-    // while (LightSensor_Lift() && Get_State(SMOTOR_L | SMOTOR_R)) {};
-    // SMOTOR_RESET(Suspend_Long, Suspend_Height, Angle, SMOTOR_L | SMOTOR_R);
-    // while (Get_State(SMOTOR_B)) {};
-    // Sensor_Lift_Flag = 0;
-
-    angleTypeDef result       = SMOTOR_ANGLE(Suspend_Long, Suspend_Height, Angle, Speed);
+    angleTypeDef result       = SMOTOR_ANGLE(Suspend_Long, Suspend_Height, SMOTOR_Angle, Speed);
     double SMOTOR_SPEED_R     = SMOTOR_SPEED_K / Suspend_Slow_Speed;
     double SMOTOR_SPEED_L     = SMOTOR_SPEED_K / Suspend_Slow_Speed;
     double Location_Delta_R   = result.angle_R * 200 / 9.0 - SMOTOR_R_Location;
     double Location_Delta_L   = result.angle_L * 200 / 9.0 - SMOTOR_L_Location;
     double Location_R         = SMOTOR_R_Location;
     double Location_L         = SMOTOR_L_Location;
-    double Location_Delta_R_M = result.angle_R * 200 / 9.0 - SMOTOR_R_Location - (result.angle_R * 200 / 9.0 - SMOTOR_R_Location) * Adjust_Slow_Step_K * Adjust_Slow_Step;
-    double Location_Delta_L_M = result.angle_L * 200 / 9.0 - SMOTOR_L_Location - (result.angle_L * 200 / 9.0 - SMOTOR_L_Location) * Adjust_Slow_Step_K * Adjust_Slow_Step;
-    for (uint8_t i = 1; i <= Adjust_Slow_Step; i++) {
+    double Location_Delta_R_M = Location_Delta_R - Location_Delta_R * Suspend_Slow_Step_K * Suspend_Slow_Step;
+    double Location_Delta_L_M = Location_Delta_L - Location_Delta_L * Suspend_Slow_Step_K * Suspend_Slow_Step;
+    for (uint8_t i = 1; i <= Suspend_Slow_Step; i++) {
         if (i != 1) SMOTOR_SPEED_R /= Suspend_Slow_Speed_K;
         if (i != 1) SMOTOR_SPEED_L /= Suspend_Slow_Speed_K;
         Location_R += Location_Delta_R * Suspend_Slow_Step_K;
@@ -295,22 +192,28 @@ void SMOTOR_MOVE_Suspend(double Angle, double Speed)
         SMOTOR_CONTROL_MOVE(Location_L, SMOTOR_SPEED_L, SMOTOR_SPEED_K / result.speed_L, SMOTOR_L);
         while (Get_State(SMOTOR_L | SMOTOR_R)) {};
     }
-
-    Location_R += Location_Delta_R_M + Suspend_Delta_R;
-    Location_L += Location_Delta_L_M + Suspend_Delta_L;
-    SMOTOR_CONTROL_MOVE(Location_R, SMOTOR_SPEED_R, SMOTOR_SPEED_K / result.speed_R, SMOTOR_R);
-    SMOTOR_CONTROL_MOVE(Location_L, SMOTOR_SPEED_L, SMOTOR_SPEED_K / result.speed_L, SMOTOR_L);
-    while (LightSensor_Lift() && Get_State(SMOTOR_L | SMOTOR_R)) {};
-    if (Get_State(SMOTOR_L | SMOTOR_R)) {
-        Sensor_Spin_Flag = 1;
-        Buzzer_ON();
+    if (Adjust_Flag) {
+        Location_R += Location_Delta_R_M + Suspend_Delta_R;
+        Location_L += Location_Delta_L_M + Suspend_Delta_L;
+        SMOTOR_CONTROL_MOVE(Location_R, SMOTOR_SPEED_R, SMOTOR_SPEED_K / result.speed_R, SMOTOR_R);
+        SMOTOR_CONTROL_MOVE(Location_L, SMOTOR_SPEED_L, SMOTOR_SPEED_K / result.speed_L, SMOTOR_L);
+        while (LightSensor_Lift() && Get_State(SMOTOR_L | SMOTOR_R)) {};
+        if (Get_State(SMOTOR_L | SMOTOR_R)) {
+            Buzzer_One();
+        }
+        SMOTOR_RESET(Suspend_Long, Suspend_Height, SMOTOR_Angle, SMOTOR_L | SMOTOR_R);
+    } else {
+        Location_R += Location_Delta_R_M;
+        Location_L += Location_Delta_L_M;
+        SMOTOR_CONTROL_MOVE(Location_R, SMOTOR_SPEED_R, SMOTOR_SPEED_K / result.speed_R, SMOTOR_R);
+        SMOTOR_CONTROL_MOVE(Location_L, SMOTOR_SPEED_L, SMOTOR_SPEED_K / result.speed_L, SMOTOR_L);
+        while (Get_State(SMOTOR_L | SMOTOR_R)) {};
     }
-    SMOTOR_RESET(Suspend_Long, Suspend_Height, Angle, SMOTOR_L | SMOTOR_R);
 }
 
-#define Get_Angle_R -40
+#define Get_Angle_R -42
 #define Get_Angle_L 40
-#define Get_Angle_M 3
+#define Get_Angle_M 0
 #define Get_Angle   40
 #define Get_Delay   300
 #define Get_Long    200
@@ -323,39 +226,39 @@ void Get_Block(Location Location, double Lift_Speed)
     switch (Location) {
         case Location_L:
             Swing(Behind);
-            SMOTOR_Angle_Adjust(Get_Angle_L, SPEED_B);
             Stretch(Get_Angle);
-            Delay_ms(Get_Delay);
+            SMOTOR_Angle_Adjust(Get_Angle_L, SPEED_B);
             SMOTOR_MOVE(Get_Long, Get_Height, Get_Angle_L, SPEED);
             SHRINK;
-            SMOTOR_MOVE_Suspend(Get_Angle_L, Lift_Speed);
+            Delay_ms(Get_Delay);
+            SMOTOR_MOVE_Suspend(Lift_Speed, Adjust);
             break;
 
         case Location_M:
             Swing(Behind);
-            SMOTOR_Angle_Adjust(Get_Angle_M, SPEED_B);
             Stretch(Get_Angle);
-            Delay_ms(Get_Delay);
+            SMOTOR_Angle_Adjust(Get_Angle_M, SPEED_B);
             SMOTOR_MOVE(Get_Long, Get_Height, Get_Angle_M, SPEED);
             SHRINK;
-            SMOTOR_MOVE_Suspend(Get_Angle_M, Lift_Speed);
+            Delay_ms(Get_Delay);
+            SMOTOR_MOVE_Suspend(Lift_Speed, Adjust);
             break;
 
         case Location_R:
             Swing(Behind);
-            SMOTOR_Angle_Adjust(Get_Angle_R, SPEED_B);
             Stretch(Get_Angle + 40);
-            Delay_ms(Get_Delay);
+            SMOTOR_Angle_Adjust(Get_Angle_R, SPEED_B);
             SMOTOR_MOVE(Get_Long, Get_Height, Get_Angle_R, SPEED);
             SHRINK;
-            SMOTOR_MOVE_Suspend(Get_Angle_R, Lift_Speed);
+            Delay_ms(Get_Delay);
+            SMOTOR_MOVE_Suspend(Lift_Speed, Adjust);
             break;
     }
 }
 
-#define CAMERA_Wait        1000
-#define CAMERA_Height_Low  -45
-#define CAMERA_Height_High -75
+#define CAMERA_Wait        500
+#define CAMERA_Height_Low  -40
+#define CAMERA_Height_High -10
 #define CAMERA_Long        200
 /// @brief 移动摄像头到指定位置
 /// @param Height 摄像头高度
@@ -363,31 +266,36 @@ void SMOTOR_MOVE_CAMERA(double Height, uint8_t Color)
 {
     Send_CMD(CIRCLE_MODE, Color);
     Swing(0);
+    SMOTOR_Angle_Adjust(Angle_Grasp, Spin_M);
     SMOTOR_MOVE(CAMERA_Long, Height, Angle_Grasp, SPEED);
     Display();
     Delay_ms(CAMERA_Wait);
 }
 
-#define Place_Delay        200
-#define Place_Angle        30
-#define Place_Delta_Height 30
-#define Camera_Delta_Long  0
-#define Place_Delta_Long   50
+#define Place_Delay         500
+#define Place_Angle         30
+#define Place_Delta_Height  25
+#define Place_Delta_Height_ 70
+#define Place_Delta_Long    30
+#define Camera_Delta_Long   0
 /// @brief 放下物料
 void Place_Block(double Lift_Speed)
 {
+    Delay_ms(Place_Delay);
     SMOTOR_Delta_MOVE(Camera_Delta_Long, -Place_Delta_Height, 0, SPEED);
     Delay_ms(Place_Delay);
     Stretch(Place_Angle);
     Delay_ms(Place_Delay);
-    SMOTOR_Delta_MOVE(-Place_Delta_Long, 0, 0, 60);
+    SMOTOR_Delta_MOVE(-Place_Delta_Long, 0, 0, 80);
+    SMOTOR_PID_MOVE(SMOTOR_Long, SMOTOR_Height + Place_Delta_Height_, SMOTOR_Angle, Lift_Speed);
     // SMOTOR_MOVE_Suspend(SMOTOR_Angle, Lift_Speed);
-    SMOTOR_MOVE(Suspend_Long, Suspend_Height, SMOTOR_Angle, Lift_Speed);
+    // SMOTOR_MOVE(Suspend_Long, Suspend_Height, SMOTOR_Angle, Lift_Speed);
+    SMOTOR_PID_MOVE(Suspend_Long, Suspend_Height, SMOTOR_Angle, Lift_Speed);
     SHRINK;
 }
 
 #define Install_Angle      20
-#define Install_Angle_R    -40
+#define Install_Angle_R    -42
 #define Install_Angle_L    40
 #define Install_Angle_M    0
 #define Install_Delay      300
@@ -401,14 +309,13 @@ void Install_Block(Location Location, double Lift_Speed)
 {
     switch (Location) {
         case Location_L:
-            Swing(0);
             Swing(Behind);
-            SMOTOR_Angle_Adjust(Install_Angle_L, SPEED_B);
+            SMOTOR_Angle_Adjust(Install_Angle_L, SPEED_B - 100);
             SMOTOR_MOVE(Install_Long, Install_Height, Install_Angle_L, SPEED);
-            Delay_ms(Install_Delay);
             Stretch(Install_Angle);
-            SMOTOR_Delta_MOVE(Install_Delta_Long, 0, 0, Lift);
-            SMOTOR_MOVE_Suspend(Install_Angle_L, Lift_Speed);
+            Delay_ms(Install_Delay);
+            SMOTOR_Delta_MOVE(Install_Delta_Long, 0, 0, SPEED);
+            SMOTOR_MOVE_Suspend(Lift_Speed, Adjust);
             Swing(Front);
             SHRINK;
             break;
@@ -417,10 +324,10 @@ void Install_Block(Location Location, double Lift_Speed)
             Swing(Behind);
             SMOTOR_Angle_Adjust(Install_Angle_M, SPEED_B);
             SMOTOR_MOVE(Install_Long, Install_Height, Install_Angle_M, SPEED);
-            Delay_ms(Install_Delay);
             Stretch(Install_Angle);
-            SMOTOR_Delta_MOVE(Install_Delta_Long, 0, 0, Lift);
-            SMOTOR_MOVE_Suspend(0, Lift_Speed);
+            Delay_ms(Install_Delay);
+            SMOTOR_Delta_MOVE(Install_Delta_Long, 0, 0, SPEED);
+            SMOTOR_MOVE_Suspend(Lift_Speed, Adjust);
             Swing(Front);
             SHRINK;
             break;
@@ -429,10 +336,10 @@ void Install_Block(Location Location, double Lift_Speed)
             Swing(Behind);
             SMOTOR_Angle_Adjust(Install_Angle_R, SPEED_B);
             SMOTOR_MOVE(Install_Long, Install_Height, Install_Angle_R, SPEED);
-            Delay_ms(Install_Delay);
             Stretch(Install_Angle);
-            SMOTOR_Delta_MOVE(Install_Delta_Long, 0, 0, Lift);
-            SMOTOR_MOVE_Suspend(Install_Angle_R, Lift_Speed);
+            Delay_ms(Install_Delay);
+            SMOTOR_Delta_MOVE(Install_Delta_Long, 0, 0, SPEED);
+            SMOTOR_MOVE_Suspend(Lift_Speed, Adjust);
             Swing(Front);
             SHRINK;
             break;
@@ -440,12 +347,13 @@ void Install_Block(Location Location, double Lift_Speed)
 }
 
 #define Take_Angle        70
+#define Take_Wait_Angle   Angle_Grasp + 30
 #define Take_Delay        500 // 100
-#define Take_Long         140 // 160
+#define Take_Long         200 // 160
 #define Take_Delta_Long   15
+#define Take_Height       110 // 122
+#define Take_Delta_Height 90
 #define Take_Speed        SPEED + 40
-#define Take_Height       120 // 122
-#define Take_Delta_Height 80
 #define Take_X            100 // 80
 #define Take_Y            100 // 80
 #define Take_Delta_Angle  32
@@ -460,9 +368,11 @@ void Take_Block(uint8_t Color, double Lift_Speed)
     int16_t Time_Out = Take_Delay, Flag = 0;
     double Camera_x, Camera_y;
     Send_CMD(CIRCLE_MODE, Color);
-    SMOTOR_MOVE(Take_Long, Take_Height, Angle_Grasp + Take_Delta_Angle, SPEED);
+    // SMOTOR_MOVE(Take_Long, Take_Height, Angle_Grasp + Take_Delta_Angle, SPEED);
+    SMOTOR_Delta_MOVE(0, Take_Height - Suspend_Height, 0, 50);
     Swing(Front);
     Stretch(Take_Angle);
+    SMOTOR_Angle_Adjust(Take_Wait_Angle, SPEED_B);
     while (1) {
         if (!Flag && (Camera_X > 60)) Flag = 1;
         if (Flag && (Camera_X < Take_X && Camera_X > -Take_X && Camera_Y < Take_Y && Camera_Y > -Take_Y && !(Camera_X == 0 && Camera_Y == 0))) {
@@ -480,18 +390,20 @@ void Take_Block(uint8_t Color, double Lift_Speed)
     }
     Buzzer_Tow(20);
     for (uint8_t i = 0; i < Take_Times; i++) {
-        if (i) Delay_ms(50);
-        if (!(Camera_X == 255 || Camera_Y == 255)) SMOTOR_XY_MOVE(Camera_X * K_x, SMOTOR_Long + Camera_Distance + Camera_Y * K_y - Take_Delta_Long, SMOTOR_Height, SPEED - i * 20);
+        if (i) Delay_ms(100);
+        if (!(Camera_X == 255 || Camera_Y == 255)) SMOTOR_XY_MOVE(Camera_X * K_x, SMOTOR_Long + Camera_Distance + Camera_Y * K_y - Take_Delta_Long, SMOTOR_Height, 60 - i * 10);
     }
     SMOTOR_Delta_MOVE(0, -Take_Delta_Height, 0, Take_Speed);
     SHRINK;
-    SMOTOR_Delta_MOVE(10, 0, 0, Take_Speed);
-    SMOTOR_MOVE(Suspend_Long, Suspend_Height, Angle_Grasp + Take_Delta_Angle, Lift_Speed);
-    // SMOTOR_MOVE_Suspend(Angle_Grasp+Take_Delta_Angle, Lift_Speed);
+    SMOTOR_Delta_MOVE(20, 0, 0, SPEED);
+    Delay_ms(200);
+
+    // SMOTOR_MOVE(Suspend_Long, Suspend_Height, Angle_Grasp + Take_Delta_Angle, Lift_Speed);
+    SMOTOR_MOVE_Suspend(Lift_H, NO_Adjust);
     // SMOTOR_Delta_MOVE(0, 30, 0, Lift_Speed-10);
 }
 
-#define Grab_Height       -75
+#define Grab_Height       -70
 #define Grab_Delta_Height 60
 #define Grab_Delta_Long   20
 #define Grab_Angle        70
@@ -508,17 +420,20 @@ void Grab_Block(CameraTypeDef Camera, double Lift_Speed)
     SMOTOR_Angle_Adjust(Camera.Angle, SPEED_B);
     Stretch(Grab_Angle);
     if (!(Camera.Angle || Camera.Height || Camera.Long)) return;
-    SMOTOR_MOVE(Camera.Long - Grab_Delta_Long, Grab_Height, SMOTOR_Angle, SPEED);
-    SMOTOR_Delta_MOVE(0, -Grab_Delta_Height, 0, SPEED);
-    SMOTOR_Delta_MOVE(20, 0, 0, Take_Speed);
+    SMOTOR_PID_MOVE(Camera.Long - Grab_Delta_Long, SMOTOR_Height, SMOTOR_Angle, SPEED);
+    SMOTOR_PID_MOVE(SMOTOR_Long, Grab_Height, SMOTOR_Angle, SPEED);
+    Delay_ms(200);
+    // 2SMOTOR_Delta_MOVE(0, -Grab_Delta_Height, 0, SPEED);
+    SMOTOR_PID_MOVE(SMOTOR_Long + Grab_Delta_Long * 1.5, SMOTOR_Height, SMOTOR_Angle, SPEED);
     SHRINK;
+    Delay_ms(200);
     SMOTOR_MOVE(Suspend_Long, Suspend_Height, SMOTOR_Angle, Lift_Speed);
     // SMOTOR_MOVE_Suspend(SMOTOR_Angle, Lift_Speed);
 }
 
-#define CAMERA_SPEED 110
-#define CAMERA_TIMES 6
-#define CAMERA_DELAY 100
+#define CAMERA_SPEED 100
+#define CAMERA_TIMES 5
+#define CAMERA_DELAY 500
 
 CameraTypeDef Camera[7];
 
@@ -543,20 +458,21 @@ void Nixie_Show()
 int main(void)
 {
     Delay_ms(1000);
+    Buzzer_Init();
+    Buzzer_One();
     SMOTOR_Init();
     OLED_Init();
     LightSensor_Init();
     OpenCV_Init();
     Servo_Init();
-    QR_Init(9600);
+    HWT101CT_Init();
+    // QR_Init(9600);
     Timer_Init();
     Encoder_Init();
-    Buzzer_Init();
     MAX7219_Init();
     PID_Init();
     PID_Inint(&PID_L);
     PID_Inint(&PID_R);
-
     Init_Status();
     Send_CMD(MAIN_MODE, NOCOLOR);
     Display();
@@ -574,142 +490,187 @@ int main(void)
     Block_Data[7] = 1;
     Nixie_Show();
     Display_();
-    switch (1) {
-            // 取物料
+    switch (-4) {
+        case -4:
+
+            while (1) {
+                Delay_ms(100);
+                Display_();
+            }
+            break;
+        case -3:
+            SMOTOR_MOVE(115, 0, 0, 60);
+            Delay_ms(1000);
+            SMOTOR_MOVE_Suspend(200, Adjust);
+            Delay_ms(1000);
+            SMOTOR_Angle_Adjust(90, 350);
+            while (1) {
+
+                Delay_ms(100);
+                // SMOTOR_MOVE(200, 50,80, 100);
+                SMOTOR_PID_MOVE(200, 0, 120, 30);
+                Delay_ms(100);
+                SMOTOR_PID_MOVE(200, 0, 120, 30);
+            }
+            break;
         case -2:
             SMOTOR_MOVE(115, 0, 0, 60);
             Delay_ms(1000);
-            SMOTOR_MOVE_Suspend(0, 300);
+            SMOTOR_MOVE_Suspend(200, Adjust);
             Delay_ms(1000);
             while (1) {
 
-                SMOTOR_Angle_Adjust(-90, 350);
-                Delay_ms(500);
-                SMOTOR_Angle_Adjust(90, 350);
-                Delay_ms(500);
-                SMOTOR_Angle_Adjust(-90, 350);
-                Delay_ms(500);
-                SMOTOR_Angle_Adjust(90, 350);
-                Delay_ms(500);
-            }
-            break;
-        case -1:
-            SMOTOR_MOVE(115, 0, 0, 60);
-            Delay_ms(100);
-            SMOTOR_MOVE_Suspend(0, Lift);
-            while (1) {
-
-                SMOTOR_Angle_Adjust(90, 100);
-                Delay_ms(500);
-                SMOTOR_Angle_Adjust(-36, 100);
+                SMOTOR_Angle_Adjust(0, 200);
                 Delay_ms(500);
                 SMOTOR_Angle_Adjust(90, 200);
                 Delay_ms(500);
                 SMOTOR_Angle_Adjust(0, 200);
                 Delay_ms(500);
-                SMOTOR_Angle_Adjust(90, 250);
+                SMOTOR_Angle_Adjust(90, 200);
                 Delay_ms(500);
-                SMOTOR_Angle_Adjust(40, 250);
-                Delay_ms(500);
+            }
+            break;
+        case -1:
+            SMOTOR_MOVE(115, 0, 0, 60);
+            Delay_ms(1000);
+            SMOTOR_MOVE_Suspend(200, Adjust);
+            Delay_ms(1000);
+            while (1) {
+                Take_Block(First_One, Lift_L);
+                Install_Block(Location_R, Lift_L);
+                Take_Block(First_Two, Lift_L);
+                Install_Block(Location_M, Lift_L);
+                Take_Block(First_Three, Lift_L);
+                Install_Block(Location_L, Lift_L);
+
+                // Get_Block(Location_L, Lift_L);
+                // SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_One);
+                // Camera_First_One = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
+                // Place_Block(Lift_H);
+
+                // Get_Block(Location_M, Lift_L);
+                // SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Two);
+                // Camera_First_Two = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
+                // Place_Block(Lift_H);
+
+                // Get_Block(Location_R, Lift_L);
+                // SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Three);
+                // Camera_First_Three = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
+                // Place_Block(Lift_H);
+
+                // Send_CMD(CIRCLE_MODE, NOCOLOR);
+                // SMOTOR_Angle_Adjust(0, SPEED_B);
+
+                // Grab_Block(Camera_First_One, Lift_L);
+                // Install_Block(Location_R, Lift_L);
+
+                // Grab_Block(Camera_First_Two, Lift_L);
+                // Install_Block(Location_M, Lift_L);
+
+                // Grab_Block(Camera_First_Three, Lift_L);
+                // Install_Block(Location_L, Lift_L);
             }
             break;
 
         case 1:
             SMOTOR_MOVE(115, 0, 0, 60);
             Delay_ms(100);
-            SMOTOR_MOVE_Suspend(0, Lift);
+            SMOTOR_MOVE_Suspend(Lift_H, Adjust);
             SMOTOR_Angle_Adjust(Angle_Grasp, SPEED_B);
-            Swing(Front);
-            Stretch(Take_Angle);
-            Delay_ms(1000);
-            SHRINK;
-            Delay_ms(1000);
-            Install_Block(Location_R, Lift - 100);
-            SMOTOR_Angle_Adjust(Angle_Grasp, SPEED_B);
-            Swing(Front);
-            Stretch(Take_Angle);
-            Delay_ms(1000);
-            SHRINK;
-            Delay_ms(1000);
-            Install_Block(Location_M, Lift - 100);
-            SMOTOR_Angle_Adjust(Angle_Grasp, SPEED_B);
-            Swing(Front);
-            Stretch(Take_Angle);
-            Delay_ms(1000);
-            SHRINK;
-            Delay_ms(1000);
-            Install_Block(Location_L, Lift - 100);
+            while (1) {
+                Swing(Front);
+                Stretch(Take_Angle);
+                Delay_ms(1000);
+                SHRINK;
+                Delay_ms(1000);
+                Install_Block(Location_R, Lift_L);
+                SMOTOR_Angle_Adjust(Angle_Grasp, SPEED_B);
+                Swing(Front);
+                Stretch(Take_Angle);
+                Delay_ms(1000);
+                SHRINK;
+                Delay_ms(1000);
+                Install_Block(Location_M, Lift_L);
+                SMOTOR_Angle_Adjust(Angle_Grasp, SPEED_B);
+                Swing(Front);
+                Stretch(Take_Angle);
+                Delay_ms(1000);
+                SHRINK;
+                Delay_ms(1000);
+                Install_Block(Location_L, Lift_L);
 
-            SMOTOR_Angle_Adjust(Angle_Grasp, 100);
+                SMOTOR_Angle_Adjust(Angle_Grasp, 100);
 
-            Get_Block(Location_L, Lift - 100);
-            SMOTOR_Angle_Adjust(Angle_Grasp, 100);
-            Swing(Front);
+                Get_Block(Location_L, Lift_L);
+                SMOTOR_Angle_Adjust(Angle_Grasp, 100);
+                Swing(Front);
 
-            Delay_ms(1000);
-            Stretch(Take_Angle);
-            Delay_ms(1000);
-            SHRINK;
+                Delay_ms(1000);
+                Stretch(Take_Angle);
+                Delay_ms(1000);
+                SHRINK;
 
-            Get_Block(Location_M, Lift - 100);
-            SMOTOR_Angle_Adjust(Angle_Grasp, SPEED_B);
-            Swing(Front);
+                Get_Block(Location_M, Lift_L);
+                SMOTOR_Angle_Adjust(Angle_Grasp, SPEED_B);
+                Swing(Front);
 
-            Delay_ms(1000);
-            Stretch(Take_Angle);
-            Delay_ms(1000);
-            SHRINK;
+                Delay_ms(1000);
+                Stretch(Take_Angle);
+                Delay_ms(1000);
+                SHRINK;
 
-            Get_Block(Location_R, Lift - 100);
-            SMOTOR_Angle_Adjust(Angle_Grasp, SPEED_B);
-            Swing(Front);
+                Get_Block(Location_R, Lift_L);
+                SMOTOR_Angle_Adjust(Angle_Grasp, SPEED_B);
+                Swing(Front);
 
-            Delay_ms(1000);
-            Stretch(Take_Angle);
-            Delay_ms(1000);
-            SHRINK;
+                Delay_ms(1000);
+                Stretch(Take_Angle);
+                Delay_ms(1000);
+                SHRINK;
+            }
 
             break;
 
         case 2:
+            SMOTOR_MOVE(115, 0, 0, 60);
+            Delay_ms(100);
+            SMOTOR_MOVE_Suspend(0, Lift_L);
 
-            SMOTOR_MOVE_Suspend(0, Lift);
+            Take_Block(First_One, Lift_L);
+            Install_Block(Location_R, Lift_L);
+            Take_Block(First_Two, Lift_L);
+            Install_Block(Location_M, Lift_L);
+            Take_Block(First_Three, Lift_L);
+            Install_Block(Location_L, Lift_L);
 
-            Take_Block(First_One, Lift);
-            Install_Block(Location_R, Lift);
-            Take_Block(First_Two, Lift);
-            Install_Block(Location_M, Lift);
-            Take_Block(First_Three, Lift);
-            Install_Block(Location_L, Lift);
-
-            Get_Block(Location_L, Lift);
+            Get_Block(Location_L, Lift_L);
             SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_One);
             Camera_First_One = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
-            Place_Block(Lift - 20);
+            Place_Block(Lift_L - 20);
 
             SMOTOR_Angle_Adjust(0, SPEED_B);
-            Get_Block(Location_M, Lift);
+            Get_Block(Location_M, Lift_L);
             SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Two);
             Camera_First_Two = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
-            Place_Block(Lift - 20);
+            Place_Block(Lift_L - 20);
 
             SMOTOR_Angle_Adjust(0, SPEED_B);
-            Get_Block(Location_R, Lift);
+            Get_Block(Location_R, Lift_L);
             SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Three);
             Camera_First_Three = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
-            Place_Block(Lift - 20);
+            Place_Block(Lift_L - 20);
 
             Send_CMD(CIRCLE_MODE, NOCOLOR);
             SMOTOR_Angle_Adjust(0, SPEED_B);
 
-            Grab_Block(Camera_First_One, Lift);
-            Install_Block(Location_R, Lift);
+            Grab_Block(Camera_First_One, Lift_L);
+            Install_Block(Location_R, Lift_L);
 
-            Grab_Block(Camera_First_Two, Lift);
-            Install_Block(Location_M, Lift);
+            Grab_Block(Camera_First_Two, Lift_L);
+            Install_Block(Location_M, Lift_L);
 
-            Grab_Block(Camera_First_Three, Lift);
-            Install_Block(Location_L, Lift);
+            Grab_Block(Camera_First_Three, Lift_L);
+            Install_Block(Location_L, Lift_L);
 
             Send_CMD(MAIN_MODE, NOCOLOR);
 
@@ -720,7 +681,7 @@ int main(void)
             Display();
             // break;7
             // case 4:
-            SMOTOR_MOVE_Suspend(0, Lift);
+            SMOTOR_MOVE_Suspend(0, Lift_L);
             MOTOR_F(-1000);
             MOTOR_Spin(Left, -16, Spead);
             MOTOR_F(-6000);
@@ -735,13 +696,13 @@ int main(void)
             MOTOR_X(8500); // 12000
             Delay_ms(500); // 圆盘
 
-            Take_Block(First_One, Lift);
-            Install_Block(Location_L, Lift);
-            Take_Block(First_Two, Lift);
-            Install_Block(Location_M, Lift);
-            Take_Block(First_Three, Lift);
+            Take_Block(First_One, Lift_L);
+            Install_Block(Location_L, Lift_L);
+            Take_Block(First_Two, Lift_L);
+            Install_Block(Location_M, Lift_L);
+            Take_Block(First_Three, Lift_L);
             Send_CMD(MAIN_MODE, NOCOLOR);
-            Install_Block(Location_R, Lift);
+            Install_Block(Location_R, Lift_L);
             SMOTOR_Angle_Adjust(20, SPEED_B);
 
             MOTOR_X(4900); // 5300
@@ -753,34 +714,34 @@ int main(void)
             MOTOR_X(9200);
 
             Delay_ms(300); // 放物料1
-            Get_Block(Location_L, Lift);
+            Get_Block(Location_L, Lift_L);
             SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_One);
             Camera_First_One = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
-            Place_Block(Lift - 10);
+            Place_Block(Lift_L - 10);
 
             SMOTOR_Angle_Adjust(0, SPEED_B);
-            Get_Block(Location_M, Lift);
+            Get_Block(Location_M, Lift_L);
             SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Two);
             Camera_First_Two = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
-            Place_Block(Lift - 10);
+            Place_Block(Lift_L - 10);
 
             SMOTOR_Angle_Adjust(0, SPEED_B);
-            Get_Block(Location_R, Lift);
+            Get_Block(Location_R, Lift_L);
             SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Three);
             Camera_First_Three = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
-            Place_Block(Lift - 10);
+            Place_Block(Lift_L - 10);
 
             Send_CMD(CIRCLE_MODE, NOCOLOR);
             SMOTOR_Angle_Adjust(0, SPEED_B); // 取物料
 
-            Grab_Block(Camera_First_One, Lift);
-            Install_Block(Location_L, Lift);
+            Grab_Block(Camera_First_One, Lift_L);
+            Install_Block(Location_L, Lift_L);
 
-            Grab_Block(Camera_First_Two, Lift);
-            Install_Block(Location_M, Lift);
+            Grab_Block(Camera_First_Two, Lift_L);
+            Install_Block(Location_M, Lift_L);
 
-            Grab_Block(Camera_First_Three, Lift);
-            Install_Block(Location_R, Lift);
+            Grab_Block(Camera_First_Three, Lift_L);
+            Install_Block(Location_R, Lift_L);
 
             Send_CMD(MAIN_MODE, NOCOLOR);
 
@@ -792,23 +753,23 @@ int main(void)
 
             MOTOR_X(8000);
             Delay_ms(500); // 放物料2
-            Get_Block(Location_L, Lift);
+            Get_Block(Location_L, Lift_L);
             SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_One);
             SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
-            Place_Block(Lift - 10);
+            Place_Block(Lift_L - 10);
 
             SMOTOR_Angle_Adjust(0, SPEED_B);
-            Get_Block(Location_M, Lift);
+            Get_Block(Location_M, Lift_L);
             SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Two);
             SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
-            Place_Block(Lift - 10);
+            Place_Block(Lift_L - 10);
 
             SMOTOR_Angle_Adjust(0, SPEED_B);
-            Get_Block(Location_R, Lift);
+            Get_Block(Location_R, Lift_L);
             SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Three);
             SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
             Send_CMD(MAIN_MODE, NOCOLOR);
-            Place_Block(Lift - 10);
+            Place_Block(Lift_L - 10);
             SMOTOR_Angle_Adjust(0, SPEED_B);
 
             MOTOR_X(11500);
@@ -1069,28 +1030,35 @@ void TIM6_IRQHandler(void)
         {
             MOTOR_Spead_Counter = 0;
             MOTOR_Spead_calc();
-        } else
-
-            PID_L.current_l = Encoder_Left_Get();
+        }
+        PID_L.current_l = Encoder_Left_Get();
         PID_L.current_s = MOTOR_LeftSpead;
         PID_R.current_l = Encoder_Right_Get();
         PID_R.current_s = MOTOR_RightSpead;
         MOTOR_Run_all();
         PID_calc_all();
 
-        Buzzer_Counter++;
-        if (!Buzzer_Flag && (Sensor_Lift_Flag && (!LightSensor_Lift()) || (Sensor_Spin_Flag && (!LightSensor_Spin())))) {
-            Buzzer_Counter = 1;
-            Buzzer_Flag    = 1;
-        }
-        if (Buzzer_Counter <= 40)
+        if (Buzzer_Flag) {
             Buzzer_ON();
-        else if (!Buzzer_Debug)
-            Buzzer_OFF();
-        if (Buzzer_Counter >= Buzzer_Delay) {
-            Buzzer_Counter = Buzzer_Delay;
-            Buzzer_Flag    = 0;
+            Buzzer_Counter++;
         }
+        if (Buzzer_Counter > Buzzer_Delay && !Buzzer_Debug) {
+            Buzzer_Counter = 0;
+            Buzzer_Flag    = 0;
+            Buzzer_OFF();
+        }
+        // if (!Buzzer_Flag && (Sensor_Lift_Flag && (!LightSensor_Lift()) || (Sensor_Spin_Flag && (!LightSensor_Spin())))) {
+        //     Buzzer_Counter = 1;
+        //     Buzzer_Flag    = 1;
+        // }
+        // if (Buzzer_Counter <= 40)
+        //     Buzzer_ON();
+        // else if (!Buzzer_Debug)
+        //     Buzzer_OFF();
+        // if (Buzzer_Counter >= Buzzer_Delay) {
+        //     Buzzer_Counter = Buzzer_Delay;
+        //     Buzzer_Flag    = 0;
+        // }
         MOTOR_Spead_Counter++;
 
         TIM_ClearITPendingBit(TIM6, TIM_IT_Update);
