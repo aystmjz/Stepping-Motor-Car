@@ -717,7 +717,7 @@ CameraTypeDef SMOTOR_CAMERA_MOVE(uint8_t Times, uint16_t Delay, double Speed)
     if (Camera_X == 255 || Camera_Y == 255) {
         for (uint8_t i = 0; i < 4; i++) {
             Time_Out = 500;
-            SMOTOR_PID_MOVE(Try_Long[i], SMOTOR_Height, SMOTOR_Angle, 40);
+            SMOTOR_PID_MOVE(Try_Long[i], SMOTOR_Height, SMOTOR_Angle, 80);//40
             if (i == 2)
                 SMOTOR_Angle_Adjust(Try_Angle[i], SPEED_B);
             else
@@ -737,7 +737,7 @@ CameraTypeDef SMOTOR_CAMERA_MOVE(uint8_t Times, uint16_t Delay, double Speed)
         Camera.Long   = 0;
         return Camera;
     }
-    Speed    = 20;
+    Speed    = 40;//20
     for (uint8_t i = 0; i < Times; i++) {
         if (i) Delay_ms(Delay);
         // if (Camera_X <= Camera_x_min && Camera_X >= -Camera_x_min && Camera_Y <= Camera_y_min && Camera_Y >= -Camera_y_min) break;

@@ -62,6 +62,7 @@ void MAX7219_Init()
 {
     GPIOMax7219_Init();
     NIXIE_UP;
+    Write_Max7219(0x0F, 0x00);
     Write_Max7219(0x09, 0x00); // 译码方式: no decode
     Write_Max7219(0x0B, 0x07); // 模式: 8个数码管显示
     NIXIE_LIGHT(0x03);

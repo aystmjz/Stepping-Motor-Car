@@ -37,11 +37,11 @@ uint8_t Sensor_Lift_Flag = 0;
 
 #define Spin_Distance 800
 
-#define Spead         85
+#define Spead         90
 #define Distance_     3000
 #define Backward      -200
 
-#define DELAY_TIME    100 // 200
+#define DELAY_TIME    50 // 200
 
 #define MOTOR_X(x)    MOTOR_X_(x)
 
@@ -203,7 +203,7 @@ void SMOTOR_MOVE_Suspend(double Speed, double Adjust_Flag)
 #define Get_Angle   40
 #define Get_Delay   300
 #define Get_Long    200
-#define Get_Height  10 // 15
+#define Get_Height  8 // 10
 /// @brief 车上取物料
 /// @param Location
 /// @param Lift_Speed
@@ -243,7 +243,7 @@ void Get_Block(Location Location, double Lift_Speed)
 }
 
 #define CAMERA_Wait          500
-#define CAMERA_Height_Low    -40
+#define CAMERA_Height_Low    -50//-40
 #define CAMERA_Height_Middle 10
 #define CAMERA_Height_High   30
 #define CAMERA_Long          170 //
@@ -261,7 +261,7 @@ void SMOTOR_MOVE_CAMERA(double Height, uint8_t Color)
 
 #define Place_Delay         500
 #define Place_Angle         30
-#define Place_Delta_Height  25
+#define Place_Delta_Height  35//25
 #define Place_Delta_Height_ 70
 #define Place_Delta_Long    30
 #define Camera_Delta_Long   0
@@ -392,7 +392,8 @@ void Take_Block(uint8_t Color, double Lift_Speed)
     Stretch(Take_Angle);
     SMOTOR_Angle_Adjust(Take_Wait_Angle, SPEED_B);
     while (1) {
-        if (!Flag && (Camera_X > Camera_Flag_X)) Flag = 1;
+        if (!Flag && (Camera_X > Camera_Flag_X)) Flag = 1;//顺时针
+        //if (!Flag && (Camera_X < -Camera_Flag_X)) Flag = 1;//逆时针
         if (Flag && (Camera_X < Take_X && Camera_X > -Take_X && Camera_Y < Take_Y && Camera_Y > -Take_Y && !(Camera_X == 0 && Camera_Y == 0))) {
             if ((Camera_X - Camera_x) < Take_error && (Camera_X - Camera_x) > -Take_error && (Camera_Y - Camera_y) < Take_error && (Camera_Y - Camera_y) > -Take_error)
                 Time_Out--;
@@ -421,7 +422,7 @@ void Take_Block(uint8_t Color, double Lift_Speed)
     // SMOTOR_Delta_MOVE(0, 30, 0, Lift_Speed-10);
 }
 
-#define Grab_Height       -70
+#define Grab_Height       -75//-70
 #define Grab_Delta_Height 60
 #define Grab_Delta_Long   20
 #define Grab_Angle        70
@@ -520,7 +521,7 @@ int main(void)
     Send_CMD(MAIN_MODE, NOCOLOR);
     Display();
     Angle_SET = 0;
-    Delay_ms(3000);
+    //Delay_ms(3000);
 
     // Send_CMD(CIRCLE_MODE, First_Two);
     // while (1) {}
@@ -541,21 +542,69 @@ int main(void)
     Block_Data[5] = 3;
     Block_Data[6] = 2;
     Block_Data[7] = 1;
-    switch (3) {
-        case -7:
-            SMOTOR_ADJUST();
-            break;
-        case -6:
-            Send_CMD(CIRCLE_MODE, 1);
-            SMOTOR_MOVE(115, 0, 0, 60);
-            Delay_ms(1000);
-            SMOTOR_MOVE_Suspend(200, NO_Adjust);
-            Delay_ms(1000);
-            start_scan_QRCode(2000);
-            Nixie_Show();
-            break;
+    switch (3) {//3
 
-        case -5:
+        case -6://机械臂位置校准
+             SMOTOR_MOVE(115, 0, 0, 60);
+            Delay_ms(100);
+            SMOTOR_MOVE_Suspend(Lift_H, Adjust);
+            SMOTOR_Angle_Adjust(Angle_Grasp, SPEED_B);
+                Swing(Front);
+                Stretch(Take_Angle);
+                Delay_ms(1000);
+                SHRINK;
+                Delay_ms(1000);
+                Install_Block(Location_L, Lift_L);
+                SMOTOR_Angle_Adjust(Angle_Grasp, SPEED_B);
+                Swing(Front);
+                Stretch(Take_Angle);
+                Delay_ms(1000);
+                SHRINK;
+                Delay_ms(1000);
+                Install_Block(Location_M, Lift_L);
+                SMOTOR_Angle_Adjust(Angle_Grasp, SPEED_B);
+                Swing(Front);
+                Stretch(Take_Angle);
+                Delay_ms(1000);
+                SHRINK;
+                Delay_ms(1000);
+                Install_Block(Location_R, Lift_L);
+
+
+            //Delay_ms(300); // 放物料1
+            Get_Block(Location_L, Lift_L);
+            SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_One);
+            Camera_First_One = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
+            if (Camera_First_One.Angle > Angle_Grasp - 5 && Camera_First_One.Angle < Angle_Grasp + 30) {
+                Buzzer_Tow(100);
+                M_Flag = 1;
+            }
+            Place_Block(Lift_H);
+            Get_Block(Location_M, Lift_L);
+            SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Two);
+            Camera_First_Two = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
+            if (Camera_First_Two.Angle > Angle_Grasp - 5 && Camera_First_Two.Angle < Angle_Grasp + 30) {
+                Buzzer_Tow(100);
+                M_Flag = 1;
+            }
+            if (M_Flag && Camera_First_Two.Angle < Angle_Grasp) {
+                Place_Block_(Lift_H);
+            } else {
+                Place_Block(Lift_H);
+            }
+            Get_Block(Location_R, Lift_L);
+            SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Three);
+            Camera_First_Three = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
+            if (M_Flag && Camera_First_Three.Angle < Angle_Grasp) {
+                Place_Block_(Lift_H);
+            } else {
+                Place_Block(Lift_H);
+            }
+            M_Flag = 0;
+            while (1) {}
+        break;
+
+        case -5://陀螺仪检测
             MOTOR_F(-1000);
             MOTOR_Spin(Left, -10, Spead);
             MOTOR_X(-10000);
@@ -568,7 +617,7 @@ int main(void)
                 MOTOR_Spin(Left, 90, Spead);
             }
             break;
-        case -4:
+        case -4://小车运动检测
 
             while (1) {
                 Delay_ms(100);
@@ -578,22 +627,7 @@ int main(void)
                 MOTOR_X(5000);
             }
             break;
-        case -3:
-            SMOTOR_MOVE(115, 0, 0, 60);
-            Delay_ms(1000);
-            SMOTOR_MOVE_Suspend(200, Adjust);
-            Delay_ms(1000);
-            SMOTOR_Angle_Adjust(90, 350);
-            while (1) {
-
-                Delay_ms(100);
-                // SMOTOR_MOVE(200, 50,80, 100);
-                SMOTOR_PID_MOVE(200, 0, 120, 30);
-                Delay_ms(100);
-                SMOTOR_PID_MOVE(200, 0, 120, 30);
-            }
-            break;
-        case -2:
+        case -2://旋转检测
             SMOTOR_MOVE(115, 0, 0, 60);
             Delay_ms(1000);
             SMOTOR_MOVE_Suspend(200, Adjust);
@@ -610,18 +644,46 @@ int main(void)
                 Delay_ms(500);
             }
             break;
-        case -1:
+        case -1://原地机械臂检测
+
+        Display();
+            // SMOTOR_ADJUST();
+            SMOTOR_MOVE(115, 0, 0, 60);
+            Delay_ms(200);
+            SMOTOR_MOVE_Suspend(150, Adjust);
+
+            Send_CMD(MAIN_MODE, NOCOLOR);
+
+            Camera_Flag = 1;
+            //Delay_ms(200); // 二维码
+            start_scan_QRCode(2000);
+            Nixie_Show();
+
+            //Delay_ms(100); // 圆盘
+
+            Take_Block(First_One, Lift_L);
+            Install_Block(Location_L, Lift_L);
+            Take_Block(First_Two, Lift_L);
+            Install_Block(Location_M, Lift_L);
+            Take_Block(First_Three, Lift_L);
+            Install_Block(Location_R, Lift_L);
+
+            while (1) {}
+
+
             SMOTOR_MOVE(115, 0, 0, 60);
             Delay_ms(1000);
             SMOTOR_MOVE_Suspend(200, Adjust);
             Delay_ms(1000);
             while (1) {
-                // Take_Block(First_One, Lift_L);
-                // Install_Block(Location_R, Lift_L);
-                // Take_Block(First_Two, Lift_L);
-                // Install_Block(Location_M, Lift_L);
-                // Take_Block(First_Three, Lift_L);
-                // Install_Block(Location_L, Lift_L);
+                Take_Block(First_One, Lift_L);
+                Install_Block(Location_L, Lift_L);
+                Take_Block(First_Two, Lift_L);
+                Install_Block(Location_M, Lift_L);
+                Take_Block(First_Three, Lift_L);
+                Install_Block(Location_R, Lift_L);
+
+                while (1) {}
 
                 Get_Block(Location_L, Lift_L);
                 SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_One);
@@ -734,7 +796,7 @@ int main(void)
             }
             break;
 
-        case 1:
+        case 1://装,取物料测试
             SMOTOR_MOVE(115, 0, 0, 60);
             Delay_ms(100);
             SMOTOR_MOVE_Suspend(Lift_H, Adjust);
@@ -793,59 +855,14 @@ int main(void)
 
             break;
 
-        case 2:
-            SMOTOR_MOVE(115, 0, 0, 60);
-            Delay_ms(100);
-            SMOTOR_MOVE_Suspend(0, Lift_L);
-
-            Take_Block(First_One, Lift_L);
-            Install_Block(Location_R, Lift_L);
-            Take_Block(First_Two, Lift_L);
-            Install_Block(Location_M, Lift_L);
-            Take_Block(First_Three, Lift_L);
-            Install_Block(Location_L, Lift_L);
-
-            Get_Block(Location_L, Lift_L);
-            SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_One);
-            Camera_First_One = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
-            Place_Block(Lift_L - 20);
-
-            SMOTOR_Angle_Adjust(0, SPEED_B);
-            Get_Block(Location_M, Lift_L);
-            SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Two);
-            Camera_First_Two = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
-            Place_Block(Lift_L - 20);
-
-            SMOTOR_Angle_Adjust(0, SPEED_B);
-            Get_Block(Location_R, Lift_L);
-            SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Three);
-            Camera_First_Three = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
-            Place_Block(Lift_L - 20);
-
-            Send_CMD(CIRCLE_MODE, NOCOLOR);
-            SMOTOR_Angle_Adjust(0, SPEED_B);
-
-            Grab_Block(Camera_First_One, Lift_L);
-            Install_Block(Location_R, Lift_L);
-
-            Grab_Block(Camera_First_Two, Lift_L);
-            Install_Block(Location_M, Lift_L);
-
-            Grab_Block(Camera_First_Three, Lift_L);
-            Install_Block(Location_L, Lift_L);
-
-            Send_CMD(MAIN_MODE, NOCOLOR);
-
-            break;
-
-        case 3:
+        case 3://比赛全流程
 
             Display();
             // SMOTOR_ADJUST();
             SMOTOR_MOVE(115, 0, 0, 60);
-            Delay_ms(1000);
+            Delay_ms(200);
             SMOTOR_MOVE_Suspend(150, Adjust);
-            Delay_ms(1000);
+            //Delay_ms(200);
 
             MOTOR_F(-1000);
             MOTOR_Spin(Left, -10, Spead);
@@ -857,12 +874,12 @@ int main(void)
             Send_CMD(MAIN_MODE, NOCOLOR);
 
             Camera_Flag = 1;
-            MOTOR_X(7400);
-            Delay_ms(200); // 二维码
+            MOTOR_X(8600);//8500//9000
+            //Delay_ms(200); // 二维码
             start_scan_QRCode(2000);
             Nixie_Show();
-            MOTOR_X(8000); // 12000
-            Delay_ms(100); // 圆盘
+            MOTOR_X(6800); //6900//6400
+            //Delay_ms(100); // 圆盘
 
             Take_Block(First_One, Lift_L);
             Install_Block(Location_L, Lift_L);
@@ -874,12 +891,12 @@ int main(void)
             SMOTOR_Angle_Adjust(0, 100);
             Send_CMD(MAIN_MODE, NOCOLOR);
 
-            MOTOR_X(6350); // 5300
+            MOTOR_X(6500); // 6800
 
             MOTOR_Spin(Left, 90, Spead);
             MOTOR_X(10200);
 
-            Delay_ms(300); // 放物料1
+            //Delay_ms(300); // 放物料1
             Get_Block(Location_L, Lift_L);
             SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_One);
             Camera_First_One = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
@@ -921,11 +938,11 @@ int main(void)
             Send_CMD(MAIN_MODE, NOCOLOR);
             SMOTOR_Angle_Adjust(0, 100);
 
-            MOTOR_X(8000);
+            MOTOR_X(8300);//8500
             MOTOR_Spin(Left, 90, Spead);
             MOTOR_X(9000);
 
-            Delay_ms(500); // 放物料2
+            //Delay_ms(500); // 放物料2
             Get_Block(Location_L, Lift_L);
             SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_One);
             Camera_First_One = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
@@ -963,10 +980,10 @@ int main(void)
             MOTOR_Spin(Left, 90, Spead);
             MOTOR_X(18400);
             MOTOR_Spin(Left, 90, Spead);
-            Delay_ms(1500); // 第二轮
+            //Delay_ms(1500); // 第二轮
 
             MOTOR_X(15400); // 12000
-            Delay_ms(100);  // 圆盘
+            //Delay_ms(100);  // 圆盘
 
             Take_Block(Last_One, Lift_L);
             Install_Block(Location_L, Lift_L);
@@ -983,7 +1000,7 @@ int main(void)
             MOTOR_Spin(Left, 90, Spead);
             MOTOR_X(10200);
 
-            Delay_ms(300); // 放物料1
+            //Delay_ms(300); // 放物料1
             Get_Block(Location_L, Lift_L);
             SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, Last_One);
             Camera_Last_One = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);

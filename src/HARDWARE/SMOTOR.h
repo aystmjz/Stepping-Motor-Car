@@ -74,9 +74,9 @@ typedef struct Camera {
 #define Spin_H                           350
 #define Spin_M                           200
 #define Spin_L                           100
-#define SPEED                            100 // 110
-#define SPEED_B                          210 // 180
-#define SPEED_B_MAX                      250 //
+#define SPEED                            150 // 100
+#define SPEED_B                          250 // 210
+#define SPEED_B_MAX                      280 //250
 #define SMOTOR_SPEED_K                   200000
 
 #define K_x                              (80.0 / 160)
