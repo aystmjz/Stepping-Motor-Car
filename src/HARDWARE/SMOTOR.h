@@ -68,8 +68,8 @@ typedef struct Camera {
 } CameraTypeDef;
 
 #define SPEED                            110//110
-#define Lift                             70
-#define SPEED_B                          300//180
+#define Lift                             200//70
+#define SPEED_B                          250//180
 #define SPEED_B_MAX                      300
 #define SMOTOR_SPEED_K                   200000
 
@@ -127,6 +127,7 @@ void SMOTOR_CONTROL(uint32_t Spead, int32_t Location, uint8_t SMOTOR);
 void SMOTOR_MOVE(double Long, double Height, double Angle, double Speed);
 void SMOTOR_Delta_MOVE(double Delta_Long, double Delta_Height, double Delta_Angle, double Speed);
 void SMOTOR_XY_MOVE(double Location_X, double Location_Y, double Height, double Speed);
+void SMOTOR_CONTROL_MOVE(double Location,double Speed,  double Spead_MAX, uint8_t SMOTOR);
 void SMOTOR_ResetLocation(uint8_t SMOTOR);
 void TIM2_IRQHandler(void);
 void TIM3_IRQHandler(void);

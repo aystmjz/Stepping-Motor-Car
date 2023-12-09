@@ -7,8 +7,8 @@
 
 #define SERVO_Stretch 0
 #define SERVO_Swing   1
-#define Time_ms       100
-#define Stretch_MIN   950
+#define Time_ms       90//100
+#define Stretch_MIN   940//950
 #define Stretch_MAX   1900
 #define Swing_F       2210
 #define Swing_L       1570
