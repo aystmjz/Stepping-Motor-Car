@@ -202,14 +202,15 @@ void Send_CMD(uint8_t main_mode, uint8_t color)
 
 #define target 100
 
-int8_t Get_Excursion()
+int16_t Get_Excursion()
 {
-    static int8_t last_data = 0;
-    int8_t A1, B1, C1, D1, E1, F1, A2, B2, C2, D2, E2, F2, Excursion1 = 0, Excursion2 = 0;
+    static int16_t last_data = 0;
+    //int8_t A1, B1, C1, D1, E1, F1, A2, B2, C2, D2, E2, F2,
+    int16_t Excursion1 = 0, Excursion2 = 0;
     if (getUsartBuf(1) == 0xff || getUsartBuf(2) == 0xff || getUsartBuf(1) == 200 || getUsartBuf(2) == 200 || getUsartBuf(1) == 0 || getUsartBuf(2) == 0) {
         return 0;
     }
-    Excursion1 = (getUsartBuf(2) - getUsartBuf(1)) * 2;
+    Excursion1 = (getUsartBuf(2) - getUsartBuf(1)) * 4;
     Excursion2 = (getUsartBuf(2) + getUsartBuf(1)) / 2 - target;
 
 #if 0

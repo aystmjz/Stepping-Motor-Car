@@ -28,7 +28,7 @@ float getUsartBuf_float(unsigned char index);
 void uart3WriteBuf(uint8_t *buf, uint8_t len);
 void Send_CMD(uint8_t main_mode, uint8_t color);
 
-int8_t Get_Excursion(void);
+int16_t Get_Excursion(void);
 uint8_t Get_Condition(void);
 uint8_t Get_Color(void);
 

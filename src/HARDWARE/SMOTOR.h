@@ -7,6 +7,7 @@
 #include "OpenCV.h"
 #include "PID.h"
 #include "Servo.h"
+#include "Buzzer.h"
 
 #define MOTOR_FULL_STEP      0 // 满步
 #define MOTOR_HALF_STEP      1 // 二分之一步
@@ -59,10 +60,17 @@ typedef struct angles {
 
 } angleTypeDef;
 
+typedef struct Camera {
+    double Long;
+    double Height;
+    double Angle;
+
+} CameraTypeDef;
+
 #define SPEED                            100
-#define Lift                             40
-#define SMOTOR_SPEED_B                   130
-#define SMOTOR_SPEED_B_MAX               170
+#define Lift                             60
+#define SPEED_B                          180
+#define SPEED_B_MAX                      180
 #define SMOTOR_SPEED_K                   200000
 
 #define K_x                              (120.0 / 160)
@@ -123,6 +131,6 @@ void TIM2_IRQHandler(void);
 void TIM3_IRQHandler(void);
 void TIM4_IRQHandler(void);
 angleTypeDef SMOTOR_ANGLE(double Long, double Height, double Angle, double Speed);
-uint8_t SMOTOR_CAMERA_MOVE(uint8_t Times, uint16_t Delay, double Speed);
+CameraTypeDef SMOTOR_CAMERA_MOVE(uint8_t Times, uint16_t Delay, double Speed);
 
 #endif

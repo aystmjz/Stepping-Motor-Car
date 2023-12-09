@@ -6,8 +6,8 @@ uint32_t SMOTOR_L_step = 0, SMOTOR_R_step = 0, SMOTOR_B_step = 0;
 int32_t SMOTOR_L_Location = 0, SMOTOR_R_Location = 0, SMOTOR_B_Location = 0;
 double SMOTOR_L_Angle = 0, SMOTOR_R_Angle = 0, SMOTOR_B_Angle = 0;
 double SMOTOR_Long = 0, SMOTOR_Height = 0, SMOTOR_Angle = 0;
-
 double SMOTOR_SPEED = 80;
+extern uint8_t Buzzer_Debug;
 
 void clock_config(void)
 {
@@ -208,11 +208,6 @@ uint8_t Get_State(uint8_t SMOTOR)
 /// @param SMOTOR 目标电机（支持SMOTOR_L|SMOTOR_R写法）
 void SMOTOR_RESET(double Long, double Height, double Angle, int8_t SMOTOR)
 {
-    angleTypeDef result = SMOTOR_ANGLE(Long, Height, Angle, SMOTOR_SPEED);
-    SMOTOR_L_Location   = result.angle_L * 200 / 9;
-    SMOTOR_R_Location   = result.angle_R * 200 / 9;
-    SMOTOR_B_Location   = result.angle_B * 200 / 9;
-
     switch (SMOTOR) {
         case SMOTOR_L:
             SMOTOR_L_flag = 0;
@@ -253,6 +248,10 @@ void SMOTOR_RESET(double Long, double Height, double Angle, int8_t SMOTOR)
             SMOTOR_STOP(SMOTOR_B);
             break;
     }
+    angleTypeDef result = SMOTOR_ANGLE(Long, Height, Angle, SMOTOR_SPEED);
+    SMOTOR_L_Location   = result.angle_L * 200 / 9;
+    SMOTOR_R_Location   = result.angle_R * 200 / 9;
+    SMOTOR_B_Location   = result.angle_B * 200 / 9;
 }
 
 /// @brief 步进电机控制
@@ -314,7 +313,8 @@ void SMOTOR_CONTROL(uint32_t Spead, int32_t Location, uint8_t SMOTOR)
             break;
     }
 }
-
+#define Long_MAX 290
+#define Long_MIN 120
 /// @brief 移动步进电机到指定位置
 /// @param Long 机械臂伸出长度
 /// @param Height 机械臂底端高度
@@ -322,6 +322,17 @@ void SMOTOR_CONTROL(uint32_t Spead, int32_t Location, uint8_t SMOTOR)
 void SMOTOR_MOVE(double Long, double Height, double Angle, double Speed)
 {
     angleTypeDef result;
+    if (Long > Long_MAX || Long < Long_MIN) {
+        Buzzer_ON();
+        Buzzer_Debug = 1;
+        Delay_ms(500);
+        Buzzer_OFF();
+        Buzzer_Debug = 0;
+        if (Long > Long_MAX)
+            Long = Long_MAX;
+        else
+            Long = Long_MIN;
+    }
     result = SMOTOR_ANGLE(Long, Height, Angle, Speed);
     SMOTOR_CONTROL(result.speed_L, result.angle_L * 200 / 9, SMOTOR_L);
     SMOTOR_CONTROL(result.speed_R, result.angle_R * 200 / 9, SMOTOR_R);
@@ -441,7 +452,7 @@ angleTypeDef SMOTOR_ANGLE(double Long, double Height, double Angle, double Speed
     if (!Delta_Angle_max || !Delta_Angle_min) {
         angle.speed_L = SMOTOR_SPEED_K / Speed;
         angle.speed_R = SMOTOR_SPEED_K / Speed;
-        angle.speed_B = SMOTOR_SPEED_K / SMOTOR_SPEED_B;
+        angle.speed_B = SMOTOR_SPEED_K / Speed;
 
     } else if (Delta_Angle_max > Delta_Angle_min) {
         angle.speed_L = SMOTOR_SPEED_K / Speed;
@@ -452,11 +463,11 @@ angleTypeDef SMOTOR_ANGLE(double Long, double Height, double Angle, double Speed
         angle.speed_L = (Delta_Angle_min * SMOTOR_SPEED_K) / (Delta_Angle_max * Speed);
         angle.speed_B = (Delta_Angle_min * SMOTOR_SPEED_K) / (Delta_Angle_B * Speed);
     }
-    if (angle.speed_B < SMOTOR_SPEED_K / SMOTOR_SPEED_B_MAX) angle.speed_B = SMOTOR_SPEED_K / SMOTOR_SPEED_B_MAX;
+    if (angle.speed_B < SMOTOR_SPEED_K / SPEED_B_MAX) angle.speed_B = SMOTOR_SPEED_K / SPEED_B_MAX;
     SMOTOR_L_Angle = angle.angle_L;
     SMOTOR_R_Angle = angle.angle_R;
     SMOTOR_B_Angle = angle.angle_B;
-    Delay_ms(50);
+    Delay_ms(100);
     return angle;
 }
 
@@ -467,23 +478,44 @@ angleTypeDef SMOTOR_ANGLE(double Long, double Height, double Angle, double Speed
 /// @param Delay
 /// @param Speed
 /// @return
-uint8_t SMOTOR_CAMERA_MOVE(uint8_t Times, uint16_t Delay, double Speed)
+CameraTypeDef SMOTOR_CAMERA_MOVE(uint8_t Times, uint16_t Delay, double Speed)
 {
-    double Camera_x, Camera_y,Long ,Angle;
-    Long= SMOTOR_Long + 60;
-    Angle = SMOTOR_Angle + 40;
-    while (Camera_X == 255 || Camera_Y == 255) {
-        SMOTOR_MOVE(Long, SMOTOR_Height, Angle, SPEED);
+    CameraTypeDef Camera;
+    double Camera_x, Camera_y;
+    double Try_Long[4]  = {SMOTOR_Long + 60, SMOTOR_Long + 60, SMOTOR_Long + 60, SMOTOR_Long + 60};
+    double Try_Angle[4] = {SMOTOR_Angle + 30, SMOTOR_Angle + 50, SMOTOR_Angle - 30, SMOTOR_Angle - 50};
+    uint16_t Time_Out   = 2000;
+    if (Camera_X == 255 || Camera_Y == 255) {
+        for (uint8_t i = 0; i < 4; i++) {
+            Time_Out = 2000;
+            SMOTOR_MOVE(Try_Long[i], SMOTOR_Height, Try_Angle[i], SPEED);
+            while (Time_Out && (Camera_X == 255 || Camera_Y == 255)) {
+                Delay_ms(1);
+                Time_Out--;
+            }
+            if (Time_Out) break;
+        }
     }
-    for (int i = 0; i < Times; i++) {
+    if (!Time_Out) {
+        Camera.Angle  = 0;
+        Camera.Height = 0;
+        Camera.Long   = 0;
+        return Camera;
+    }
+    for (uint8_t i = 0; i < Times; i++) {
         if (i) Delay_ms(Delay);
         Camera_x = Camera_X * K_x;
         Camera_y = Camera_Y * K_y;
-        SMOTOR_XY_MOVE(Camera_x, SMOTOR_Long + Camera_Distance + Camera_y, SMOTOR_Height, Speed);
+        if (!(Camera_X == 255 || Camera_Y == 255)) SMOTOR_XY_MOVE(Camera_x, SMOTOR_Long + Camera_Distance + Camera_y, SMOTOR_Height, Speed -= 10);
     }
+    Camera.Angle  = SMOTOR_Angle;
+    Camera.Height = SMOTOR_Height;
+    Camera.Long   = SMOTOR_Long;
     Swing(0);
-    return 0;
+    return Camera;
 }
+
+
 
 // 中断服务函数
 void TIM2_IRQHandler(void)

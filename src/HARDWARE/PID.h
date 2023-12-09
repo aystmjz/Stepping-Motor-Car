@@ -17,7 +17,7 @@
 #endif
 
 
-#define MOTOR_MAX   100
+#define MOTOR_MAX   150
 
 typedef enum {
     Forward  = 1,

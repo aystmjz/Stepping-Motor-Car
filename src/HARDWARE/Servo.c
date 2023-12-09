@@ -15,11 +15,11 @@ void Init_Status(void)
 
 /// @brief 机械爪控制
 /// @param Location 机械爪张开的大小（0~100）
-void Stretch(uint16_t Location)
+void Stretch(int16_t Location)
 {
     if(Location>120)Location=120;
     Location=(Stretch_MAX-Stretch_MIN)*Location/100;
-    moveServo(SERVO_Stretch, Location+Stretch_MIN, Time_ms);
+    moveServo(SERVO_Stretch, Stretch_MIN+Location, Time_ms);
 }
 
 /// @brief 机械臂控制

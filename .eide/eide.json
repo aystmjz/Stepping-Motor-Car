@@ -74,17 +74,12 @@
         },
         "options": "null"
       },
-      "uploader": "JLink",
+      "uploader": "OpenOCD",
       "uploadConfig": {
         "bin": "",
-        "baseAddr": "0x08000000",
-        "cpuInfo": {
-          "vendor": "ST",
-          "cpuName": "STM32F103ZE"
-        },
-        "proType": 1,
-        "speed": 8000,
-        "otherCmds": ""
+        "target": "stm32f1x",
+        "interface": "cmsis-dap-v1",
+        "baseAddr": "0x08000000"
       },
       "uploadConfigMap": {
         "JLink": {

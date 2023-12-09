@@ -16,12 +16,12 @@ void LightSensor_Init(void)
 /// @return 到位返回0
 uint8_t LightSensor_Lift(void)
 {
-	return GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_6);
+	return GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_7);
 }
 
 /// @brief 获取旋转传感器的数据
 /// @return 到位返回0
 uint8_t LightSensor_Spin(void)
 {
-	return GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_7);
+	return GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_6);
 }
