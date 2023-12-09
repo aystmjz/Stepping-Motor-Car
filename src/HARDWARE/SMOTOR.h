@@ -68,7 +68,6 @@ typedef struct Camera {
 
 } CameraTypeDef;
 
-
 #define Lift_H                           150 // 200
 #define Lift_M                           120
 #define Lift_L                           100
@@ -77,11 +76,12 @@ typedef struct Camera {
 #define Spin_L                           100
 #define SPEED                            100 // 110
 #define SPEED_B                          210 // 180
-#define SPEED_B_MAX                      250//
+#define SPEED_B_MAX                      250 //
 #define SMOTOR_SPEED_K                   200000
 
 #define K_x                              (80.0 / 160)
 #define K_y                              (80.0 / 160)
+#define Camera_Flag_X                    70//顺时针
 #define Camera_Distance                  160.0
 #define Angle_Grasp                      90.0
 #define Camera_X                         getUsartBuf_float(2)
@@ -130,6 +130,7 @@ void SMOTOR_START(uint8_t SMOTOR);
 uint8_t Get_State(uint8_t SMOTOR);
 void SMOTOR_RESET(double Long, double Height, double Angleu, int8_t SMOTOR);
 void SMOTOR_Adjust(double Angle);
+void SMOTOR_Adjust_L(double Angle);
 void SMOTOR_CONTROL(uint32_t Spead, int32_t Location, uint8_t SMOTOR);
 void SMOTOR_MOVE(double Long, double Height, double Angle, double Speed);
 void SMOTOR_Angle_Adjust(double Angle, double Speed);

@@ -154,7 +154,7 @@ void start_scan_QRCode(uint16_t Wait_Time)
         for (i = 0; i < 9; i++) { Serial2_SendByte(outbuf[i]); }
         while (!flag) {
             for (i = 0; i <= recevBufindex; i++) {
-                if (recevBuf[i] == PREIX && recevBuf[i + 8] == SUFIX) {
+                if (recevBuf[i] == PREIX &&(recevBuf[i + 8] == SUFIX||recevBuf[i + 9] == SUFIX) ) {
                     flag = 1;
                     for (uint8_t j = 1; j <= 7; j++) { Block_Data[j] = recevBuf[j + i] - '0'; }
                 }
@@ -171,11 +171,11 @@ void start_scan_QRCode(uint16_t Wait_Time)
             return;
         }
         if (Times % 2)
-            SMOTOR_Angle_Adjust(Wait_Angle, 20);
+            SMOTOR_Angle_Adjust(Wait_Angle, 15);
         else
-            SMOTOR_Angle_Adjust(-Wait_Angle, 20);
+            SMOTOR_Angle_Adjust(-Wait_Angle, 15);
         for (i = 0; i <= recevBufindex; i++) {
-            if (recevBuf[i] == PREIX && recevBuf[i + 8] == SUFIX) {
+            if (recevBuf[i] == PREIX &&(recevBuf[i + 8] == SUFIX||recevBuf[i + 9] == SUFIX)) {
                 for (uint8_t j = 1; j <= 7; j++) { Block_Data[j] = recevBuf[j + i] - '0'; }
                 if (SMOTOR_Angle) SMOTOR_Angle_Adjust(0, 100);
                 return;

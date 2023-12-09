@@ -262,6 +262,13 @@ void SMOTOR_Adjust(double Angle)
     SMOTOR_STOP(SMOTOR_B);
     SMOTOR_B_Location = Angle * 200 / 9;
 }
+
+void SMOTOR_Adjust_L(double Angle)
+{
+    SMOTOR_L_flag = 0;
+    SMOTOR_STOP(SMOTOR_L);
+    SMOTOR_L_Location = Angle * 200 / 9;
+}
 /// @brief 步进电机控制
 /// @param Spead 速度（）
 /// @param Location 角度（500对应转动22.5度）
@@ -701,7 +708,7 @@ angleTypeDef SMOTOR_ANGLE(double Long, double Height, double Angle, double Speed
 CameraTypeDef SMOTOR_CAMERA_MOVE(uint8_t Times, uint16_t Delay, double Speed)
 {
     CameraTypeDef Camera;
-    double Camera_x, Camera_y, Long, Angle, Camera_Delta_x, Camera_Delta_y;
+    double Camera_x, Camera_y, Long, Angle;
     Long                = SMOTOR_Long;
     Angle               = SMOTOR_Angle;
     double Try_Long[4]  = {Long + 20, Long + 40, Long + 20, Long + 40};

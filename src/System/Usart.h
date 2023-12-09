@@ -5,11 +5,14 @@
 #include "stm32f10x.h" // Device header
 #include "bool.h"
 
+#define BufLength 10
+
 void Usart3SerialInit(void);
 uint8_t Usart3SerialGetRxFlag(void);
 uint8_t Usart3SerialGetRxData(void);
 
 void Serial1_Init(void);
 void uartWriteBuf(uint8_t *buf, uint8_t len);
+void Usart5SerialInit(void);
 
 #endif

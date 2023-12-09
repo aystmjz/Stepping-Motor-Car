@@ -124,18 +124,18 @@ void MOTOR_X_(int x)
 {
     MOTOR_Clear(MOTOR_Left | MOTOR_Right);
     if (x >= 0) {
-        while (MOTOR_CONTROL(Spead + E, x, MOTOR_Left) & MOTOR_CONTROL(Spead + E_, x, MOTOR_Right)) { Display(); }
+        while (MOTOR_CONTROL(Spead + E, x, MOTOR_Left) & MOTOR_CONTROL(Spead + E_, x, MOTOR_Right)) {}
     } else {
-        while (MOTOR_CONTROL(Spead + E_, x, MOTOR_Left) & MOTOR_CONTROL(Spead + E, x, MOTOR_Right)) { Display(); }
+        while (MOTOR_CONTROL(Spead + E_, x, MOTOR_Left) & MOTOR_CONTROL(Spead + E, x, MOTOR_Right)) {}
     }
     MOTOR_Clear(MOTOR_Left | MOTOR_Right);
     MOTOR_CONTROL(Spead, 0, MOTOR_Left | MOTOR_Right);
     Delay_ms(DELAY_TIME);
 }
 
-#define MOTOR_F(x)                                                                                            \
-    MOTOR_Clear(MOTOR_Left | MOTOR_Right);                                                                    \
-    while (MOTOR_CONTROL(Spead, (x), MOTOR_Left) | MOTOR_CONTROL(Spead + 1, (x), MOTOR_Right)) { Display(); } \
+#define MOTOR_F(x)                                                                                \
+    MOTOR_Clear(MOTOR_Left | MOTOR_Right);                                                        \
+    while (MOTOR_CONTROL(Spead, (x), MOTOR_Left) | MOTOR_CONTROL(Spead + 1, (x), MOTOR_Right)) {} \
     Delay_ms(DELAY_TIME)
 
 extern double SMOTOR_SPEED;
@@ -392,7 +392,7 @@ void Take_Block(uint8_t Color, double Lift_Speed)
     Stretch(Take_Angle);
     SMOTOR_Angle_Adjust(Take_Wait_Angle, SPEED_B);
     while (1) {
-        if (!Flag && (Camera_X > 60)) Flag = 1;
+        if (!Flag && (Camera_X > Camera_Flag_X)) Flag = 1;
         if (Flag && (Camera_X < Take_X && Camera_X > -Take_X && Camera_Y < Take_Y && Camera_Y > -Take_Y && !(Camera_X == 0 && Camera_Y == 0))) {
             if ((Camera_X - Camera_x) < Take_error && (Camera_X - Camera_x) > -Take_error && (Camera_Y - Camera_y) < Take_error && (Camera_Y - Camera_y) > -Take_error)
                 Time_Out--;
@@ -449,6 +449,22 @@ void Grab_Block(CameraTypeDef Camera, double Lift_Speed)
     // SMOTOR_MOVE_Suspend(SMOTOR_Angle, Lift_Speed);
 }
 
+#define ADJUST_ANGLE 5
+
+void SMOTOR_ADJUST()
+{
+    SMOTOR_CONTROL(100, ADJUST_ANGLE * 200 / 9, SMOTOR_L);
+    Delay_ms(200);
+    SMOTOR_Adjust_L(0);
+    SMOTOR_MOVE(115, 0, 0, 60);
+    Delay_ms(200);
+    SMOTOR_Angle_Adjust(0, 100);
+    Swing(0);
+    Delay_ms(1000);
+    SMOTOR_MOVE_Suspend(150, Adjust);
+    Delay_ms(1000);
+}
+
 #define CAMERA_SPEED 100
 #define CAMERA_TIMES 5
 #define CAMERA_DELAY 500
@@ -473,13 +489,23 @@ void Nixie_Show()
     Nixie_showPlus(4);
 }
 uint8_t M_Flag = 0;
+
+extern uint8_t UART5_databuf[BufLength];
+//     Usart5SerialInit();
+// while (1)
+// {
+//     OLED_ShowNum(1, 2, UART5_databuf[1], 1);
+//     OLED_ShowNum(2, 2, UART5_databuf[2], 1);
+//     OLED_ShowNum(3, 2, UART5_databuf[3], 1);
+//     OLED_ShowNum(4, 2, UART5_databuf[4], 1);
+// }
 int main(void)
 {
-    Delay_ms(1000);
+    MAX7219_Init();
+    OLED_Init();
     Buzzer_Init();
     Buzzer_One();
     SMOTOR_Init();
-    OLED_Init();
     LightSensor_Init();
     OpenCV_Init();
     Servo_Init();
@@ -487,7 +513,6 @@ int main(void)
     QR_Init(9600);
     Timer_Init();
     Encoder_Init();
-    MAX7219_Init();
     PID_Init();
     PID_Inint(&PID_L);
     PID_Inint(&PID_R);
@@ -501,17 +526,32 @@ int main(void)
     // while (1) {}
     //  start_scan_QRCode(5000);
     MOTOR_F(0);
+    Block_Data[1] = 0;
+    Block_Data[2] = 0;
+    Block_Data[3] = 0;
+    Block_Data[5] = 0;
+    Block_Data[6] = 0;
+    Block_Data[7] = 0;
+    MAX7219_Init();
+    Delay_ms(500);
+    Nixie_Show();
     Block_Data[1] = 1;
     Block_Data[2] = 2;
     Block_Data[3] = 3;
     Block_Data[5] = 3;
     Block_Data[6] = 2;
     Block_Data[7] = 1;
-    Nixie_Show();
-    Display_();
     switch (3) {
+        case -7:
+            SMOTOR_ADJUST();
+            break;
         case -6:
-            start_scan_QRCode(5000);
+            Send_CMD(CIRCLE_MODE, 1);
+            SMOTOR_MOVE(115, 0, 0, 60);
+            Delay_ms(1000);
+            SMOTOR_MOVE_Suspend(200, NO_Adjust);
+            Delay_ms(1000);
+            start_scan_QRCode(2000);
             Nixie_Show();
             break;
 
@@ -801,7 +841,7 @@ int main(void)
         case 3:
 
             Display();
-
+            // SMOTOR_ADJUST();
             SMOTOR_MOVE(115, 0, 0, 60);
             Delay_ms(1000);
             SMOTOR_MOVE_Suspend(150, Adjust);
@@ -821,7 +861,7 @@ int main(void)
             Delay_ms(200); // 二维码
             start_scan_QRCode(2000);
             Nixie_Show();
-            MOTOR_X(8500); // 12000
+            MOTOR_X(8000); // 12000
             Delay_ms(100); // 圆盘
 
             Take_Block(First_One, Lift_L);
@@ -834,7 +874,7 @@ int main(void)
             SMOTOR_Angle_Adjust(0, 100);
             Send_CMD(MAIN_MODE, NOCOLOR);
 
-            MOTOR_X(5850); // 5300
+            MOTOR_X(6350); // 5300
 
             MOTOR_Spin(Left, 90, Spead);
             MOTOR_X(10200);
@@ -925,7 +965,7 @@ int main(void)
             MOTOR_Spin(Left, 90, Spead);
             Delay_ms(1500); // 第二轮
 
-            MOTOR_X(15900); // 12000
+            MOTOR_X(15400); // 12000
             Delay_ms(100);  // 圆盘
 
             Take_Block(Last_One, Lift_L);
@@ -938,7 +978,7 @@ int main(void)
             Send_CMD(MAIN_MODE, NOCOLOR);
             SMOTOR_Angle_Adjust(0, 100);
 
-            MOTOR_X(5850); // 5300
+            MOTOR_X(6350); // 5300
 
             MOTOR_Spin(Left, 90, Spead);
             MOTOR_X(10200);
@@ -1028,13 +1068,13 @@ int main(void)
 
             MOTOR_X(12500);
             MOTOR_Spin(Left, 90, Spead);
-            MOTOR_X(18400); // 18400
+            MOTOR_X(14200); // 18400
 
             Camera_Flag = 0;
             MOTOR_Spin(Right, 10, Spead);
-            MOTOR_F(1000);
+            MOTOR_X(10000);
             MOTOR_Spin(Left, 10, Spead);
-            MOTOR_X(2000);
+            //MOTOR_F(1000);
 
             break;
     }
