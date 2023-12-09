@@ -16,6 +16,7 @@ PID PID_L, PID_R;
 extern int16_t MOTOR_LeftSpead, MOTOR_RightSpead;
 extern double SMOTOR_Long, SMOTOR_Angle, SMOTOR_Height;
 extern uint8_t Block_Data[10];
+extern float Angle_SET;
 
 uint8_t Buzzer_Flag      = 0;
 uint8_t Buzzer_Debug     = 0;
@@ -36,7 +37,7 @@ uint8_t Sensor_Lift_Flag = 0;
 
 #define Spin_Distance 1000
 
-#define Spead         70
+#define Spead         85
 #define Distance_     3000
 #define Backward      -200
 
@@ -49,7 +50,7 @@ void Buzzer_One()
     Buzzer_Flag = 1;
 }
 
-void Display()
+void Display__()
 {
     OLED_ShowString(1, 1, "X:");
     // OLED_ShowSignedNum(1, 3, getUsartBuf_float(2) * 10, 4);
@@ -65,7 +66,7 @@ void Display()
     OLED_ShowNum(4, 14, Last_Two, 1);
     OLED_ShowNum(4, 16, Last_Three, 1);
 }
-void Display__()
+void Display()
 {
     OLED_ShowSignedNum(2, 1, PID_L.e_l, 5);
     OLED_ShowSignedNum(2, 9, PID_R.e_l, 5);
@@ -76,10 +77,11 @@ void Display__()
     OLED_ShowSignedNum(4, 11, MOTOR_RightSpead, 3);
     // OLED_ShowSignedNum(1,1,Encoder_Left_Get(),5);
     OLED_ShowSignedNum(1, 9, Encoder_Right_Get(), 5);
-    OLED_ShowNum(1, 1, Data(1), 2);
-    OLED_ShowNum(1, 3, Data(2), 2);
-    OLED_ShowSignedNum(1, 5, E, 1);
-    OLED_ShowSignedNum(1, 7, E_, 1);
+    OLED_ShowSignedNum(1, 1, HWT_getAngle(), 3);
+    //OLED_ShowNum(1, 1, Data(1), 2);E
+    //OLED_ShowNum(1, 3, Data(2), 2);
+    OLED_ShowSignedNum(1, 5, E, 3);
+    //OLED_ShowSignedNum(1, 7, E_, 1);
 }
 
 void Display_()
@@ -126,9 +128,9 @@ void MOTOR_X_(int x)
 {
     MOTOR_Clear(MOTOR_Left | MOTOR_Right);
     if (x >= 0) {
-        while (MOTOR_CONTROL(Spead + E, x, MOTOR_Left) & MOTOR_CONTROL(Spead + E_ + 2, x, MOTOR_Right)) { Display(); }
+        while (MOTOR_CONTROL(Spead + E, x, MOTOR_Left) & MOTOR_CONTROL(Spead + E_ , x, MOTOR_Right)) { Display(); }
     } else {
-        while (MOTOR_CONTROL(Spead + E_, x, MOTOR_Left) & MOTOR_CONTROL(Spead + E + 2, x, MOTOR_Right)) { Display(); }
+        while (MOTOR_CONTROL(Spead + E_, x, MOTOR_Left) & MOTOR_CONTROL(Spead + E , x, MOTOR_Right)) { Display(); }
     }
     MOTOR_Clear(MOTOR_Left | MOTOR_Right);
     MOTOR_CONTROL(Spead, 0, MOTOR_Left | MOTOR_Right);
@@ -490,7 +492,16 @@ int main(void)
     Block_Data[7] = 1;
     Nixie_Show();
     Display_();
-    switch (-4) {
+    switch (-5) {
+
+        case -5:
+
+            while (1) {
+                Delay_ms(1000);
+                MOTOR_X(10000);
+                MOTOR_Spin(Left, 90, Spead);
+            }
+            break;
         case -4:
 
             while (1) {

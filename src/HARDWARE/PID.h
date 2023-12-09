@@ -5,6 +5,7 @@
 #include "Encoder.h"
 #include "OpenCV.h"
 #include "Delay.h"
+#include "HWT101CT.h"
 
 
 #define MOTOR_NULL  ((uint8_t)0x00)

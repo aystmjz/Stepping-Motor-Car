@@ -1,11 +1,11 @@
 #include "OpenCV.h"
 
-#define A_ !A
-#define B_ !B
-#define C_ !C
-#define D_ !D
-#define E_ !E
-#define F_ !F
+#define A_  !A
+#define B_  !B
+#define C_  !C
+#define D_  !D
+#define E_  !E
+#define F_  !F
 
 #define A1_ !A1
 #define B1_ !B1
@@ -180,16 +180,15 @@ void uart3WriteBuf(uint8_t *buf, uint8_t len)
 /// @param color 颜色
 void Send_CMD(uint8_t main_mode, uint8_t color)
 {
-    uint8_t outbuf[CAMERA_LEN] = {HEADER_CAMER_CMD,MAIN_MODE,0x30,TAIL_CAMER_CMD};
+    uint8_t outbuf[CAMERA_LEN] = {HEADER_CAMER_CMD, MAIN_MODE, 0x30, TAIL_CAMER_CMD};
 
     outbuf[1] = main_mode;
-    outbuf[2] = color+0x30;
+    outbuf[2] = color + 0x30;
 
     for (int i = 0; i < CAMERA_LEN; i++) {
-        uart3WriteBuf(&outbuf[i],1);
+        uart3WriteBuf(&outbuf[i], 1);
     }
 }
-
 
 // void DataTest()
 // {
@@ -199,21 +198,25 @@ void Send_CMD(uint8_t main_mode, uint8_t color)
 // }
 
 #ifdef WSDC2412D
-float Angle_SET=0;
-#define target 100
-#define HWT_Angle            (HWT_getAngle())
-#define HWT_Angle_K            10
+float Angle_SET = 0;
+#define target      100
+#define HWT_Angle   (HWT_getAngle())
+#define HWT_Angle_K 4
 int32_t Get_Excursion()
 {
-    //static int16_t last_data = 0;
-    //int8_t A1, B1, C1, D1, E1, F1, A2, B2, C2, D2, E2, F2,
-    int32_t Excursion=0,Excursion1 = 0, Excursion2 = 0;
-    if (getUsartBuf(1) == 0xff || getUsartBuf(2) == 0xff || getUsartBuf(1) == 200 || getUsartBuf(2) == 200 || getUsartBuf(1) == 0 || getUsartBuf(2) == 0) {
-        return 0;
-    }
+    // static int16_t last_data = 0;
+    // int8_t A1, B1, C1, D1, E1, F1, A2, B2, C2, D2, E2, F2,
+    int32_t Excursion = 0, Excursion1 = 0, Excursion2 = 0;
+    // if (getUsartBuf(1) == 0xff || getUsartBuf(2) == 0xff || getUsartBuf(1) == 200 || getUsartBuf(2) == 200 || getUsartBuf(1) == 0 || getUsartBuf(2) == 0) {
+    //     return 0;
+    // }
     Excursion1 = (getUsartBuf(2) - getUsartBuf(1)) * 4;
-    Excursion2 = (getUsartBuf(2) + getUsartBuf(1)) / 2 - target;
-    Excursion+=(Excursion1 + Excursion2)/9+HWT_Angle*HWT_Angle_K;
+    //Excursion2 = (getUsartBuf(2) + getUsartBuf(1)) / 2 - target;
+    if (!Angle_SET && HWT_Angle > 270 && HWT_Angle < 360) {
+        Excursion += (Excursion1 + Excursion2) / 9 -(HWT_Angle-360.0-Angle_SET) * HWT_Angle_K;
+    } else {
+        Excursion += (Excursion1 + Excursion2) / 9 -(HWT_Angle-Angle_SET) * HWT_Angle_K;
+    }
 
 #if 0
     A1=getUsartBuf(1)&0x20;
@@ -243,8 +246,8 @@ int32_t Get_Excursion()
     if(!(A2 ||B2 ||C2 ||D2 ||E2 ||F2 ))Excursion1=3;
     if(!(A2_||B2_||C2_||D2_||E2_||F2_))Excursion1=-3;
 #endif
-    //last_data = Excursion1 + Excursion2;
-    return Excursion1 + Excursion2;
+    // last_data = Excursion1 + Excursion2;
+    return Excursion;
 }
 
 #else

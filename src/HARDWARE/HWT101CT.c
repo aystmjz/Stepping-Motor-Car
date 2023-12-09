@@ -23,7 +23,20 @@ float HWT_getAngleSpeed()
  */
 float HWT_getAngle()
 {
-    return (float)((short)(((short)angle_buf[5] << 8) | angle_buf[4])) * 180 / 32768;
+    float Angle;
+    Angle=(float)((short)(((short)angle_buf[5] << 8) | angle_buf[4])) * 180 / 32768;
+    if(Angle>-180&&Angle<0)
+    {
+        Angle=-Angle;
+    }
+    else if(Angle>0&&Angle<180)
+    {
+        Angle=360.0-Angle;
+    }
+    else if(Angle==180||Angle==-180){
+        Angle=180.0;
+    }
+    return Angle;
 }
 
 /**
@@ -182,6 +195,7 @@ void HWT_Serial_Init()
 void HWT101CT_Init(void)
 {
     HWT_Serial_Init();
+    Delay_ms(100);
     //HWT_setBaud(HWT_BIRATE_9600);
     HWT_setZero();
 }

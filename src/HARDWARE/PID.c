@@ -1,6 +1,7 @@
 #include "PID.h"
 
 int16_t MOTOR_LeftSpead, MOTOR_RightSpead;
+extern float Angle_SET;
 
 void PID_Inint(PID *PID)
 {
@@ -33,7 +34,15 @@ void PID_SpeadSet(PID *PID, int32_t Spead)
 /// @return
 uint8_t MOTOR_CONTROL(int32_t Spead, int32_t Location, uint16_t MOTOR)
 {
-    if (Location < 0) Spead = -Spead;
+    if (Location < 0) {
+        Spead = -Spead;
+        if (Spead < -100) Spead = -100;
+        if (Spead > -20) Spead = -20;
+    } else {
+        if (Spead > 100) Spead = 100;
+        if (Spead < 20) Spead = 20;
+    }
+
     switch (MOTOR) {
         case 0x01:
             PID_LocationSet(&PID_L, Location);
@@ -64,7 +73,6 @@ uint8_t MOTOR_CONTROL(int32_t Spead, int32_t Location, uint16_t MOTOR)
                 return 0;
             else
                 return 1;
-
     }
     return 0;
 }
@@ -271,8 +279,6 @@ void MOTOR_Set(uint16_t Spead, Rotation Vale, uint16_t MOTOR)
         case 0x02:
             TIM_SetCompare4(TIM1, Spead);
             break;
-
-
     }
 #ifdef WSDC2412D
     MOTOR_Rotation(Vale, MOTOR);
@@ -369,12 +375,19 @@ void MOTOR_Run_all()
     MOTOR_Run(&PID_R, MOTOR_Right);
 }
 
-#define Spin_EX 25
-
+#define Spin_EX 10
+#define HWT_Angle   (HWT_getAngle())
 void MOTOR_Spin(Direction Vale, int32_t Angle, int32_t Spead)
 {
 
 #ifdef S_Spin
+    if (Vale == Left) {
+        if (Angle_SET + Angle >= 360.0) Angle_SET -= 360.0;
+        Angle_SET += Angle;
+    } else {
+        if (Angle_SET - Angle < 0) Angle_SET += 360.0;
+        Angle_SET -= Angle;
+    }
     Delay_ms(200);
     Angle = (int32_t)((float)Angle * 81.5); // 26.8//74.8//79
     // Spead+=10;

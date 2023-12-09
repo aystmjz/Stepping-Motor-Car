@@ -2,6 +2,7 @@
 #define __HWT101CT_H__
 #include "stm32f10x.h"
 #include "OLED.h"
+#include "Delay.h"
 #include <stdio.h>
 
 #define Angle_Speed_Length 9
