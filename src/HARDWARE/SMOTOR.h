@@ -122,6 +122,7 @@ void SMOTOR_STOP(uint8_t SMOTOR);
 void SMOTOR_START(uint8_t SMOTOR);
 uint8_t Get_State(uint8_t SMOTOR);
 void SMOTOR_RESET(double Long, double Height, double Angleu, int8_t SMOTOR);
+void SMOTOR_Adjust(double Angle);
 void SMOTOR_CONTROL(uint32_t Spead, int32_t Location, uint8_t SMOTOR);
 void SMOTOR_MOVE(double Long, double Height, double Angle, double Speed);
 void SMOTOR_Delta_MOVE(double Delta_Long, double Delta_Height, double Delta_Angle, double Speed);
