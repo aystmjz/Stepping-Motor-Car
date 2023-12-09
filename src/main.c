@@ -162,14 +162,24 @@ void SMOTOR_MOVE_Suspend(double Angle, double Speed)
     while (Get_State(SMOTOR_B)) {};
 }
 
-#define Get_Angle_R       -20
-#define Get_Angle_L       20
-#define Get_Angle_M       -2
-#define Get_Angle         30
+// #define Install_Angle         20
+// #define Install_Angle_R       -23
+// #define Install_Angle_L       23
+// #define Install_Angle_M       0
+// #define Install_Delay         500
+// #define Install_Long          160 // 170
+// #define Install_Long_Adjust_M 20
+// #define Install_Delta_Long    15
+// #define Install_Height        30
+
+#define Get_Angle_R       -28
+#define Get_Angle_L       25
+#define Get_Angle_M       0
+#define Get_Angle         40
 #define Get_Delay         500
-#define Get_Long          130
-#define Get_Long_Adjust_M 30
-#define Get_Height        20
+#define Get_Long          150
+#define Get_Long_Adjust_M 20
+#define Get_Height        30
 /// @brief 车上取物料
 /// @param Location
 /// @param Lift_Speed
@@ -188,6 +198,7 @@ void Get_Block(Location Location, double Lift_Speed)
 
         case Location_M:
             SMOTOR_Angle_Adjust(Get_Angle_M, SPEED_B);
+            SMOTOR_Delta_MOVE(-Get_Long_Adjust_M, 0, 0, Lift_Speed);
             Swing(Get_Angle_M);
             Stretch(Get_Angle);
             Delay_ms(Get_Delay);
@@ -199,7 +210,7 @@ void Get_Block(Location Location, double Lift_Speed)
         case Location_R:
             SMOTOR_Angle_Adjust(Get_Angle_R, SPEED_B);
             Swing(Get_Angle_R);
-            Stretch(Get_Angle);
+            Stretch(Get_Angle+20);
             Delay_ms(Get_Delay);
             SMOTOR_MOVE(Get_Long, Get_Height, Get_Angle_R, SPEED);
             SHRINK;
@@ -223,14 +234,16 @@ void SMOTOR_MOVE_CAMERA(double Height, uint8_t Color)
     Delay_ms(CAMERA_Wait);
 }
 
+
 #define Place_Delay        200
 #define Place_Angle        30
 #define Place_Delta_Height 80
+#define Camera_Delta_Long  -5
 #define Place_Delta_Long   50
 /// @brief 放下物料
 void Place_Block(double Lift_Speed)
 {
-    SMOTOR_Delta_MOVE(0, -Place_Delta_Height, 0, SPEED);
+    SMOTOR_Delta_MOVE(Camera_Delta_Long, -Place_Delta_Height, 0, SPEED);
     Delay_ms(Place_Delay);
     Stretch(Place_Angle);
     Delay_ms(Place_Delay);
@@ -331,11 +344,11 @@ void Take_Block(uint8_t Color, double Lift_Speed)
             Camera_x=Camera_X;
             Camera_y=Camera_Y;
         }
-    Delay_ms(1);
-    if(!Time_Out)break;
+        Delay_ms(1);
+        if(!Time_Out)break;
     }
-    Buzzer_ON();
     Buzzer_Debug = 1;
+    Buzzer_ON();
     Delay_ms(20);
     Buzzer_OFF();
     Buzzer_ON();
@@ -346,7 +359,6 @@ void Take_Block(uint8_t Color, double Lift_Speed)
         if (i) Delay_ms(100);
         if (!(Camera_X == 255 || Camera_Y == 255)) SMOTOR_XY_MOVE(Camera_X * K_x, SMOTOR_Long + Camera_Distance + Camera_Y * K_y-Take_Delta_Long, SMOTOR_Height, SPEED-i*20);
     }
-    //Delay_ms(Take_Delay);
     SMOTOR_Delta_MOVE(0, -Take_Delta_Height, 0, Take_Speed);
     SHRINK;
     SMOTOR_Delta_MOVE(10, 0, 0, Take_Speed);
@@ -355,10 +367,12 @@ void Take_Block(uint8_t Color, double Lift_Speed)
     //SMOTOR_Delta_MOVE(0, 30, 0, Lift_Speed-10);
 }
 
+
+
 #define Grab_Height       30
 #define Grab_Delta_Height 60
 #define Grab_Delta_Long   20
-#define Grab_Angle        40
+#define Grab_Angle        70
 /// @brief 从放置区取物块
 /// @param Color
 /// @param Lift_Speed
@@ -370,7 +384,8 @@ void Grab_Block(CameraTypeDef Camera, double Lift_Speed)
     SMOTOR_MOVE(Camera.Long - Grab_Delta_Long, Grab_Height, SMOTOR_Angle, SPEED);
     SMOTOR_Delta_MOVE(0, -Grab_Delta_Height, 0, SPEED);
     SHRINK;
-    SMOTOR_MOVE(Suspend_Long - 10, Suspend_Height, SMOTOR_Angle, Lift_Speed);
+    SMOTOR_Delta_MOVE(10, 0, 0, Take_Speed);//
+    SMOTOR_MOVE(Suspend_Long , Suspend_Height, SMOTOR_Angle, Lift_Speed);
     // SMOTOR_MOVE_Suspend(SMOTOR_Angle, Lift_Speed);
 }
 
@@ -420,12 +435,37 @@ int main(void)
         case 1:
             SMOTOR_MOVE_Suspend(0, Lift);
 
-            Take_Block(First_One, Lift);
+            Get_Block(Location_L, Lift);
+            SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_One);
+            Camera_First_One = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
+            Place_Block(Lift - 20);
+
+            SMOTOR_Angle_Adjust(0, SPEED_B);
+            Get_Block(Location_M, Lift);
+            SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Two);
+            Camera_First_Two = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
+            Place_Block(Lift - 20);
+
+            SMOTOR_Angle_Adjust(0, SPEED_B);
+            Get_Block(Location_R, Lift);
+            SMOTOR_MOVE_CAMERA(CAMERA_Height_Low, First_Three);
+            Camera_First_Three = SMOTOR_CAMERA_MOVE(CAMERA_TIMES, CAMERA_DELAY, CAMERA_SPEED);
+            Place_Block(Lift - 20);
+
+            //Send_CMD(CIRCLE_MODE, NOCOLOR);
+            SMOTOR_Angle_Adjust(0, SPEED_B);// 取物料
+
+            Grab_Block(Camera_First_One, Lift);
             Install_Block(Location_R, Lift);
-            Take_Block(First_Two, Lift);
+
+            Grab_Block(Camera_First_Two, Lift);
             Install_Block(Location_M, Lift);
-            Take_Block(First_Three, Lift);
+
+            Grab_Block(Camera_First_Three, Lift);
             Install_Block(Location_L, Lift);
+
+            // Send_CMD(MAIN_MODE, NOCOLOR);
+
 
             break;
 
@@ -609,24 +649,7 @@ int main(void)
     }
 }
 
-#ifdef M_MOTOR_
-void Display2()
-{
-    OLED_ShowSignedNum(2, 1, PID_L2.e_l, 5);
-    OLED_ShowSignedNum(2, 9, PID_R2.e_l, 5);
-    OLED_ShowSignedNum(3, 1, PID_L2.TOTAL_OUT, 5);
-    OLED_ShowSignedNum(3, 9, PID_R2.TOTAL_OUT, 5);
-    OLED_ShowSignedNum(4, 1, MOTOR_Left2Spead, 3);
-    OLED_ShowSignedNum(4, 6, PID_L2.e_l - PID_R2.e_l, 3);
-    OLED_ShowSignedNum(4, 11, MOTOR_Right2Spead, 3);
-    // OLED_ShowSignedNum(1,1,Encoder_Left_Get(),5);
-    OLED_ShowSignedNum(1, 9, Encoder_Right2_Get(), 5);
-    OLED_ShowNum(1, 1, Data(1), 2);
-    OLED_ShowNum(1, 3, Data(0), 2);
-    OLED_ShowSignedNum(1, 5, E, 1);
-    OLED_ShowSignedNum(1, 7, E_, 1);
-}
-#endif
+#if 0
 int main_(void)
 {
 
@@ -817,12 +840,15 @@ int main_(void)
             }
 
             break;
-    }
 
     while (1) {
         Display();
     }
+
+    }
 }
+#endif
+
 
 
 

@@ -471,6 +471,7 @@ angleTypeDef SMOTOR_ANGLE(double Long, double Height, double Angle, double Speed
     return angle;
 }
 
+
 /// @brief 摄像头调整
 /// @param Camera_x 摄像头识别x坐标
 /// @param Camera_y 摄像头识别y坐标
@@ -481,14 +482,17 @@ angleTypeDef SMOTOR_ANGLE(double Long, double Height, double Angle, double Speed
 CameraTypeDef SMOTOR_CAMERA_MOVE(uint8_t Times, uint16_t Delay, double Speed)
 {
     CameraTypeDef Camera;
-    double Camera_x, Camera_y;
-    double Try_Long[4]  = {SMOTOR_Long + 60, SMOTOR_Long + 60, SMOTOR_Long + 60, SMOTOR_Long + 60};
-    double Try_Angle[4] = {SMOTOR_Angle + 30, SMOTOR_Angle + 50, SMOTOR_Angle - 30, SMOTOR_Angle - 50};
+    double Camera_x, Camera_y,Long,Angle;
+    Long=SMOTOR_Long;
+    Angle=SMOTOR_Angle;
+    double Try_Long[4]  = {Long + 20, Long + 40, Long + 20, Long + 40};
+    double Try_Angle[4] = {Angle + 40, Angle + 50, Angle - 40, Angle - 50};
     uint16_t Time_Out   = 2000;
     if (Camera_X == 255 || Camera_Y == 255) {
         for (uint8_t i = 0; i < 4; i++) {
             Time_Out = 2000;
             SMOTOR_MOVE(Try_Long[i], SMOTOR_Height, Try_Angle[i], SPEED);
+            Delay_ms(100);
             while (Time_Out && (Camera_X == 255 || Camera_Y == 255)) {
                 Delay_ms(1);
                 Time_Out--;
