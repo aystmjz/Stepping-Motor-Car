@@ -378,7 +378,7 @@ void MOTOR_Run_all()
 #define Angle_EX      5
 #define HWT_Angle     (HWT_getAngle())
 #define Stop_Distance 350
-#define EX_Distance   1100//1000
+#define EX_Distance   1000
 void MOTOR_Spin(Direction Vale, int32_t Angle, int32_t Spead)
 {
 
@@ -389,7 +389,7 @@ void MOTOR_Spin(Direction Vale, int32_t Angle, int32_t Spead)
         Angle_SET -= Angle;
     Delay_ms(100);
     if (Angle > -30 && Angle < 30) {
-        Angle = (int32_t)((float)Angle * 81.5); // 26.8//74.8//79//81.5
+        Angle = (int32_t)((float)Angle * 81.5); // 26.8//74.8//79
         switch (Vale) {
             case Left:
                 MOTOR_Clear(MOTOR_Left | MOTOR_Right);
@@ -410,7 +410,7 @@ void MOTOR_Spin(Direction Vale, int32_t Angle, int32_t Spead)
                 break;
         }
     } else {
-        Angle = (int32_t)((float)Angle * 81.5 + EX_Distance);//81.5
+        Angle = (int32_t)((float)Angle * 81.5 + EX_Distance);
         switch (Vale) {
             case Left:
                 MOTOR_Clear(MOTOR_Left | MOTOR_Right);
